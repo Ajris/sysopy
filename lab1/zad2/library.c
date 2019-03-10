@@ -72,7 +72,7 @@ int saveBlock(struct Result *table, char *fileName) {
     if (readingFile == NULL) {
         printf("File not opened\n");
         return -2;
-    } else if (size < 1) {
+    } else if (size > 999999) {
         printf("File is too big\n");
         return -3;
     } else {

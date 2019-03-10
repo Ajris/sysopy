@@ -71,7 +71,7 @@ int saveBlock(struct Result *table, char *fileName) {
     FILE *readingFile = fopen(fileName, "r");
     if (readingFile == NULL) {
         printf("File not opened\n");
-    } else if (size > 9999) {
+    } else if (size > 999999) {
         printf("File is too big\n");
     } else {
         char *content = calloc(size, sizeof(char));
