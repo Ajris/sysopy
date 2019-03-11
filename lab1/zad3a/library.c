@@ -5,7 +5,7 @@
 #include <memory.h>
 #include <stdlib.h>
 
-struct Result *createTable(size_t blockNum) {
+struct Result *createTable(int blockNum) {
     if (blockNum <= 0) {
         return NULL;
     }

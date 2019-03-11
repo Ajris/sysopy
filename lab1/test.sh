@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-cd zad2
+cd zad3a
 cmake .
 make
-./mainStatic search_directory ~/Desktop/  sabre tmp.txt  search_directory ~/Android/ sabre tmp.txt search_directory ~/ sabre tmp.txt
+./mainDyn search_directory ~/Desktop/  sabre tmp.txt
