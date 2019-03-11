@@ -7,14 +7,30 @@
 CMakeFiles
 Makefile
 CMakeCache.txt
-/lab1/zad2/mainShared
-/lab1/zad2/mainStatic
-/lab1/zad2/tmp.txt
+mainShared
+mainStatic
+tmp.txt
 /lab1/zad2/main
 *.cmake
-lab1/zad2/Testing
-cmake-build-debug/
+Testing
+mainDyn
+mainDyn-O
+mainDyn-O1
+mainDyn-O2
+mainDyn-O3
+mainDyn-Os
+mainShared-O
+mainShared-O1
+mainShared-O2
+mainShared-O3
+mainShared-Os
+mainStatic-O
+mainStatic-O1
+mainStatic-O2
+mainStatic-O3
+mainStatic-Os
 
+cmake-build-debug/
 # Object files
 *.o
 *.ko

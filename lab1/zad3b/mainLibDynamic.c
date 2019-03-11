@@ -66,9 +66,8 @@ int main(int argc, char **argv) {
         raport[i] = malloc(sizeof(char *));
     }
 
-
     printf("\n");
-
+    int wasInitialized = 0;
     struct Result *result;
     raport[0] = "\n\nREAL - SYS - USER";
     int currentIndex = 1;
@@ -79,6 +78,7 @@ int main(int argc, char **argv) {
         savedBegin.sys = begin->tms_stime;
         savedBegin.user = begin->tms_utime;
         if (strcmp(argv[i], "create_table") == 0) {
+            wasInitialized = 1;
             operationNum = 1;
             if (i + 1 >= argc) {
                 printf("Error in input, not enough parameters for creating table");
@@ -166,15 +166,13 @@ int main(int argc, char **argv) {
         }
     }
     printf("\n");
-    if (result != NULL) {
+    if (wasInitialized == 1) {
 //        printTable(result);
         freeTable(result);
     }
     saveRaport(raport, currentIndex);
     dlclose(library);
 }
-
-
 
 void saveRaport(char **raport, int size) {
     FILE* out = fopen("raport3b.txt", "a");
