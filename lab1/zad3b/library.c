@@ -36,7 +36,9 @@ void searchFile(char *directory, char *fileToSearch, char *fileToSave) {
     strcat(find, " > ");
     strcat(find, fileToSave);
 
-    system(find);
+    int a = system(find);
+    if(a != 0){
+    }
 }
 
 void freeBlock(struct Result *table, int index) {

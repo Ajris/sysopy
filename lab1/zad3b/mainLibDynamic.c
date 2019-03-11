@@ -4,8 +4,7 @@
 #include <sys/times.h>
 #include <time.h>
 #include <zconf.h>
-
-#include "library.h"
+#include <dlfcn.h>
 
 struct Clock{
     clock_t real;
@@ -13,7 +12,24 @@ struct Clock{
     clock_t sys;
 };
 
+struct Result {
+    char **blocks;
+    size_t blockNum;
+};
+
 void saveRaport(char **raport, int size);
+
+struct Result *(*createTable)(size_t blockNum);
+
+void (*freeTable)(struct Result *table);
+
+void (*searchFile)(char *directory, char *fileToSearch, char *fileToSave);
+
+void (*freeBlock)(struct Result *table, int index);
+
+int (*saveBlock)(struct Result *table, char *file);
+
+void (*printTable)(struct Result *table);
 
 /*
  RESULT* create_table INT numberOfBlocks
@@ -24,20 +40,37 @@ void saveRaport(char **raport, int size);
  */
 
 int main(int argc, char **argv) {
+    void* library = dlopen("libzad3bDynamic.so", RTLD_LAZY);
+    if(library == NULL){
+        printf("Error loading library");
+        return 1;
+    }
+    *(void**) (&createTable) = dlsym(library, "createTable");
+    *(void**) (&freeTable) = dlsym(library, "freeTable");
+    *(void**) (&searchFile) = dlsym(library, "searchFile");
+    *(void**) (&saveBlock)= dlsym(library, "saveBlock");
+    *(void**) (&printTable) = dlsym(library, "printTable");
+    *(void**) (&freeBlock) = dlsym(library, "freeBlock");
+
+    if(dlerror() != NULL){
+        printf("Sth went wrong");
+        return 1;
+    }
+
     struct tms *begin = malloc(sizeof(struct tms));
     struct tms *end = malloc(sizeof(struct tms));
     struct Clock savedBegin;
     struct Clock savedEnd;
-    char **raport = malloc(3*argc * sizeof(char **));
+    char **raport = malloc(2*argc * sizeof(char **));
     for (int i = 0; i < argc; i++) {
         raport[i] = malloc(sizeof(char *));
     }
+
 
     printf("\n");
 
     struct Result *result;
     raport[0] = "\n\nREAL - SYS - USER";
-
     int currentIndex = 1;
     for (int i = 1; i < argc; i++) {
         int operationNum = 0;
@@ -52,13 +85,7 @@ int main(int argc, char **argv) {
                 return 1;
             }
             char *tmp;
-            int siz = (int)strtol(argv[i + 1], &tmp, 0);
-            result = createTable(siz);
-
-            if(result == NULL){
-                printf("Wrong argument %d",siz);
-                return 1;
-            }
+            result = createTable((size_t) strtol(argv[i + 1], &tmp, 0));
             i = i + 1;
         } else if (strcmp(argv[i], "search_directory") == 0) {
             operationNum = 2;
@@ -144,12 +171,13 @@ int main(int argc, char **argv) {
         freeTable(result);
     }
     saveRaport(raport, currentIndex);
+    dlclose(library);
 }
 
 
 
 void saveRaport(char **raport, int size) {
-    FILE* out = fopen("raport2.txt", "a");
+    FILE* out = fopen("raport3b.txt", "a");
     if(out == NULL){
         printf("Something went wrong");
         return;
