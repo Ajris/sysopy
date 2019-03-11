@@ -1,0 +1,3 @@
+Najwięcej czasu zajmuje find, operacje wywolywane z roznym ladowaniem bibliotek
+zajmuja podobna ilosc czasu. Zapisywanie i natychmiastowe usuwanie zajmuje calkiem nieduzo
+czasu porownujac do pierwszego zapisywania i wypelniania tablicy i pozniejszego usuwania.
