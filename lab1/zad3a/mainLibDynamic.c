@@ -3,7 +3,8 @@
 #include <memory.h>
 #include <sys/times.h>
 #include <time.h>
-#include <zconf.h>
+#include <unistd.h>
+
 #include <dlfcn.h>
 
 struct Clock {
