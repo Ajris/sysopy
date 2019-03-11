@@ -7,7 +7,7 @@
 
 #include "library.h"
 
-struct clock{
+struct Clock{
     clock_t real;
     clock_t user;
     clock_t sys;
@@ -25,8 +25,8 @@ void saveRaport(char **raport, int size);
 int main(int argc, char **argv) {
     struct tms *begin = malloc(sizeof(struct tms));
     struct tms *end = malloc(sizeof(struct tms));
-    struct clock savedBegin;
-    struct clock savedEnd;
+    struct Clock savedBegin;
+    struct Clock savedEnd;
     char **raport = malloc(2*argc * sizeof(char **));
     for (int i = 0; i < argc; i++) {
         raport[i] = malloc(sizeof(char *));

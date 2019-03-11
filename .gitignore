@@ -4,13 +4,15 @@
 *.d
 .idea
 *.cbp
-cmake_install.cmake
 CMakeFiles
 Makefile
 CMakeCache.txt
 /lab1/zad2/mainShared
 /lab1/zad2/mainStatic
 /lab1/zad2/tmp.txt
+/lab1/zad2/main
+*.cmake
+lab1/zad2/Testing
 cmake-build-debug/
 
 # Object files
