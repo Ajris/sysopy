@@ -53,6 +53,7 @@ void freeBlock(struct Result *table, int index) {
             if (table->blocks[index] != NULL) {
                 free(table->blocks[index]);
                 table->blocks[index] = NULL;
+//                printf("Removed on index: %d\n", index);
             }
         }
     }
