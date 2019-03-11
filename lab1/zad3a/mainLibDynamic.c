@@ -12,11 +12,12 @@ struct Clock{
     clock_t sys;
 };
 
-void saveRaport(char **raport, int size);
 struct Result {
     char **blocks;
     size_t blockNum;
 };
+
+void saveRaport(char **raport, int size);
 
 struct Result *(*createTable)(size_t blockNum);
 
@@ -40,12 +41,21 @@ void (*printTable)(struct Result *table);
 
 int main(int argc, char **argv) {
     void* library = dlopen("libzad3aDynamic.so", RTLD_LAZY);
+    if(library == NULL){
+        printf("Error loading library");
+        return 1;
+    }
     *(void**) (&createTable) = dlsym(library, "createTable");
     *(void**) (&freeTable) = dlsym(library, "freeTable");
     *(void**) (&searchFile) = dlsym(library, "searchFile");
     *(void**) (&saveBlock)= dlsym(library, "saveBlock");
     *(void**) (&printTable) = dlsym(library, "printTable");
     *(void**) (&freeBlock) = dlsym(library, "freeBlock");
+
+    if(dlerror() != NULL){
+        printf("Sth went wrong");
+        return 1;
+    }
 
     struct tms *begin = malloc(sizeof(struct tms));
     struct tms *end = malloc(sizeof(struct tms));
@@ -60,7 +70,7 @@ int main(int argc, char **argv) {
     printf("\n");
 
     struct Result *result;
-    raport[0] = "\nREAL - SYS - USER\n";
+    raport[0] = "\n\nREAL - SYS - USER";
     int currentIndex = 1;
     for (int i = 1; i < argc; i++) {
         int operationNum = 0;
@@ -72,7 +82,7 @@ int main(int argc, char **argv) {
             operationNum = 1;
             if (i + 1 >= argc) {
                 printf("Error in input, not enough parameters for creating table");
-                return 0;
+                return 1;
             }
             char *tmp;
             result = createTable((size_t) strtol(argv[i + 1], &tmp, 0));
@@ -81,7 +91,7 @@ int main(int argc, char **argv) {
             operationNum = 2;
             if (i + 3 >= argc) {
                 printf("Error in input, not enough parameters for search");
-                return 0;
+                return 1;
             }
             char *directory = argv[i + 1];
             char *fileToSearch = argv[i + 2];
@@ -92,7 +102,7 @@ int main(int argc, char **argv) {
             operationNum = 3;
             if (i + 1 >= argc) {
                 printf("Error in input, not enough parameters for creating table");
-                return 0;
+                return 1;
             }
             char *tmp;
             int num = (int) strtol(argv[i + 1], &tmp, 0);
@@ -101,7 +111,7 @@ int main(int argc, char **argv) {
             operationNum = 4;
             if (i + 1 >= argc) {
                 printf("Error in input, not enough parameters for creating table");
-                return 0;
+                return 1;
             }
             int index = saveBlock(result, argv[i + 1]);
             if (index >= 0) {
@@ -114,7 +124,7 @@ int main(int argc, char **argv) {
             operationNum = 5;
             char *tmp;
             if(i+2 >= argc){
-                return 0;
+                return 1;
             }
             int num = (int) strtol(argv[i + 2], &tmp, 0);
 
@@ -167,7 +177,7 @@ int main(int argc, char **argv) {
 
 
 void saveRaport(char **raport, int size) {
-    FILE* out = fopen("raport2.txt", "a");
+    FILE* out = fopen("raport3a.txt", "a");
     if(out == NULL){
         printf("Something went wrong");
         return;

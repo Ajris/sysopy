@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     printf("\n");
 
     struct Result *result;
-    raport[0] = "\nREAL - SYS - USER\n";
+    raport[0] = "\n\nREAL - SYS - USER";
     int currentIndex = 1;
     for (int i = 1; i < argc; i++) {
         int operationNum = 0;
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
             operationNum = 1;
             if (i + 1 >= argc) {
                 printf("Error in input, not enough parameters for creating table");
-                return 0;
+                return 1;
             }
             char *tmp;
             int siz = (int)strtol(argv[i + 1], &tmp, 0);
@@ -56,14 +56,14 @@ int main(int argc, char **argv) {
 
             if(result == NULL){
                 printf("Wrong argument %d",siz);
-                return 0;
+                return 1;
             }
             i = i + 1;
         } else if (strcmp(argv[i], "search_directory") == 0) {
             operationNum = 2;
             if (i + 3 >= argc) {
                 printf("Error in input, not enough parameters for search");
-                return 0;
+                return 1;
             }
             char *directory = argv[i + 1];
             char *fileToSearch = argv[i + 2];
@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
             operationNum = 3;
             if (i + 1 >= argc) {
                 printf("Error in input, not enough parameters for creating table");
-                return 0;
+                return 1;
             }
             char *tmp;
             int num = (int) strtol(argv[i + 1], &tmp, 0);
@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
             operationNum = 4;
             if (i + 1 >= argc) {
                 printf("Error in input, not enough parameters for creating table");
-                return 0;
+                return 1;
             }
             int index = saveBlock(result, argv[i + 1]);
             if (index >= 0) {
@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
             operationNum = 5;
             char *tmp;
             if(i+2 >= argc){
-                return 0;
+                return 1;
             }
             int num = (int) strtol(argv[i + 2], &tmp, 0);
 
@@ -148,7 +148,7 @@ int main(int argc, char **argv) {
 
 
 void saveRaport(char **raport, int size) {
-    FILE* out = fopen("raport2.txt", "a");
+    FILE* out = fopen("raport3a.txt", "a");
     if(out == NULL){
         printf("Something went wrong");
         return;
