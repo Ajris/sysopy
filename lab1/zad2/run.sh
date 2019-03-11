@@ -14,4 +14,4 @@ test(){
     $1 ${saveThenRemove}
 }
 
-test ./mainStatic
+test ./main
