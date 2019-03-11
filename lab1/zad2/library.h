@@ -5,10 +5,10 @@
 
 struct Result {
     char **blocks;
-    size_t blockNum;
+    int blockNum;
 };
 
-struct Result *createTable(size_t blockNum);
+struct Result *createTable(int blockNum);
 
 void freeTable(struct Result *table);
 
