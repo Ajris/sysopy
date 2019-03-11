@@ -30,7 +30,7 @@ void searchFile(char *directory, char *fileToSearch, char *fileToSave) {
 
     strcat(find, "find ");
     strcat(find, directory);
-    strcat(find, " ");
+    strcat(find, " -name ");
     strcat(find, fileToSearch);
     strcat(find, " ");
     strcat(find, " > ");
@@ -71,8 +71,10 @@ int saveBlock(struct Result *table, char *fileName) {
     FILE *readingFile = fopen(fileName, "r");
     if (readingFile == NULL) {
         printf("File not opened\n");
+        return -2;
     } else if (size > 999999) {
         printf("File is too big\n");
+        return -3;
     } else {
         char *content = calloc(size, sizeof(char));
         char *line = calloc(size, sizeof(char));
