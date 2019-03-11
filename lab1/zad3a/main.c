@@ -28,14 +28,15 @@ int main(int argc, char **argv) {
     struct tms *end = malloc(sizeof(struct tms));
     struct Clock savedBegin;
     struct Clock savedEnd;
-    char **raport = malloc(2*argc * sizeof(char **));
+    char **raport = malloc(4*argc * sizeof(char **));
     for (int i = 0; i < argc; i++) {
         raport[i] = malloc(sizeof(char *));
     }
 
+
     printf("\n");
 
-    struct Result *result;
+    struct Result *result = NULL;
     raport[0] = "\n\nREAL - SYS - USER";
     int currentIndex = 1;
     for (int i = 1; i < argc; i++) {
@@ -51,13 +52,7 @@ int main(int argc, char **argv) {
                 return 1;
             }
             char *tmp;
-            int siz = (int)strtol(argv[i + 1], &tmp, 0);
-            result = createTable(siz);
-
-            if(result == NULL){
-                printf("Wrong argument %d",siz);
-                return 1;
-            }
+            result = createTable((int)strtol(argv[i + 1], &tmp, 0));
             i = i + 1;
         } else if (strcmp(argv[i], "search_directory") == 0) {
             operationNum = 2;
@@ -101,7 +96,8 @@ int main(int argc, char **argv) {
             int num = (int) strtol(argv[i + 2], &tmp, 0);
 
             for(int j = 0; j < num; j++){
-                freeBlock(result,saveBlock(result, argv[i + 1]));
+                int index = saveBlock(result, argv[i + 1]);
+                freeBlock(result, index);
             }
             i = i + 1;
         }

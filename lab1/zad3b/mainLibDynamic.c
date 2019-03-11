@@ -61,14 +61,15 @@ int main(int argc, char **argv) {
     struct tms *end = malloc(sizeof(struct tms));
     struct Clock savedBegin;
     struct Clock savedEnd;
-    char **raport = malloc(2*argc * sizeof(char **));
+    char **raport = malloc(4*argc * sizeof(char **));
     for (int i = 0; i < argc; i++) {
         raport[i] = malloc(sizeof(char *));
     }
 
+
     printf("\n");
-    int wasInitialized = 0;
-    struct Result *result;
+
+    struct Result *result = NULL;
     raport[0] = "\n\nREAL - SYS - USER";
     int currentIndex = 1;
     for (int i = 1; i < argc; i++) {
@@ -78,7 +79,6 @@ int main(int argc, char **argv) {
         savedBegin.sys = begin->tms_stime;
         savedBegin.user = begin->tms_utime;
         if (strcmp(argv[i], "create_table") == 0) {
-            wasInitialized = 1;
             operationNum = 1;
             if (i + 1 >= argc) {
                 printf("Error in input, not enough parameters for creating table");
@@ -129,7 +129,11 @@ int main(int argc, char **argv) {
             int num = (int) strtol(argv[i + 2], &tmp, 0);
 
             for(int j = 0; j < num; j++){
-                freeBlock(result,saveBlock(result, argv[i + 1]));
+                int index = saveBlock(result, argv[i + 1]);
+                if(result->blocks[index] != NULL){
+                    freeBlock(result, index);
+                    printf("%d", index);
+                }
             }
             i = i + 1;
         }
@@ -166,13 +170,15 @@ int main(int argc, char **argv) {
         }
     }
     printf("\n");
-    if (wasInitialized == 1) {
+    if (result != NULL) {
 //        printTable(result);
         freeTable(result);
     }
     saveRaport(raport, currentIndex);
     dlclose(library);
 }
+
+
 
 void saveRaport(char **raport, int size) {
     FILE* out = fopen("raport3b.txt", "a");

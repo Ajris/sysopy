@@ -11,7 +11,7 @@ struct Result *createTable(int blockNum) {
     }
     struct Result *blocks = calloc(1, sizeof(struct Result));
     blocks->blockNum = blockNum;
-    blocks->blocks = calloc(blockNum, sizeof(char *) * blockNum);
+    blocks->blocks = calloc(blockNum, sizeof(char *));
     for (int i = 0; i < blockNum; i++) {
         blocks->blocks[i] = NULL;
     }
@@ -20,13 +20,19 @@ struct Result *createTable(int blockNum) {
 
 void freeTable(struct Result *table) {
     if (table != NULL) {
-        free(table->blocks);
+        if (table->blocks != NULL) {
+            for(int i = 0; i < table->blockNum;i++){
+                if(table->blocks[i] != NULL)
+                    free(table->blocks[i]);
+            }
+            free(table->blocks);
+        }
         free(table);
     }
 }
 
 void searchFile(char *directory, char *fileToSearch, char *fileToSave) {
-    char *find = calloc(1000, sizeof(char));
+    char *find = calloc(10000, sizeof(char));
 
     strcat(find, "find ");
     strcat(find, directory);
@@ -44,14 +50,16 @@ void freeBlock(struct Result *table, int index) {
         if (table->blockNum <= index) {
             printf("Index is not in table\n");
         } else {
-            free(table->blocks[index]);
-            table->blocks[index] = NULL;
+            if (table->blocks[index] != NULL) {
+                free(table->blocks[index]);
+                table->blocks[index] = NULL;
+            }
         }
     }
 }
 
 int saveBlock(struct Result *table, char *fileName) {
-    if(table == NULL){
+    if (table == NULL) {
         printf("Table wasnt initialized\n");
         return -2;
     }
@@ -59,7 +67,7 @@ int saveBlock(struct Result *table, char *fileName) {
     size_t size = 0;
     checkingSizeFile = fopen(fileName, "r");
 
-    if(checkingSizeFile == NULL){
+    if (checkingSizeFile == NULL) {
         printf("Couldnt open file\n");
         return -3;
     }
@@ -80,12 +88,12 @@ int saveBlock(struct Result *table, char *fileName) {
         char *line = calloc(size, sizeof(char));
         while (fscanf(readingFile, "%s", line) != EOF) {
             strcat(content, line);
-            strcat(content, " ");
         }
         int savedIndex = -1;
         for (int j = 0; j < table->blockNum; j++) {
             if (table->blocks[j] == NULL) {
                 savedIndex = j;
+                table->blocks[j] = calloc(1, sizeof(char)*(size+1));
                 table->blocks[j] = content;
                 break;
             }
