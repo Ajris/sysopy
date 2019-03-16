@@ -7,7 +7,8 @@
 
 struct Result *createTable(int blockNum) {
     if (blockNum <= 0) {
-        return NULL;
+        printf("BlockNumber <= 0");
+        exit(1);
     }
     struct Result *blocks = calloc(1, sizeof(struct Result));
     blocks->blockNum = blockNum;
@@ -49,6 +50,7 @@ void freeBlock(struct Result *table, int index) {
     if (table != NULL) {
         if (table->blockNum <= index) {
             printf("Index is not in table\n");
+            exit(1);
         } else {
             if (table->blocks[index] != NULL) {
                 free(table->blocks[index]);
@@ -62,7 +64,7 @@ void freeBlock(struct Result *table, int index) {
 int saveBlock(struct Result *table, char *fileName) {
     if (table == NULL) {
         printf("Table wasnt initialized\n");
-        return -2;
+        exit(1);
     }
     FILE *checkingSizeFile;
     size_t size = 0;
@@ -70,7 +72,7 @@ int saveBlock(struct Result *table, char *fileName) {
 
     if (checkingSizeFile == NULL) {
         printf("Couldnt open file\n");
-        return -3;
+        exit(1);
     }
 
     fseek(checkingSizeFile, 0, SEEK_END);
@@ -80,10 +82,10 @@ int saveBlock(struct Result *table, char *fileName) {
     FILE *readingFile = fopen(fileName, "r");
     if (readingFile == NULL) {
         printf("File not opened\n");
-        return -2;
+        exit(1);
     } else if (size > 999999) {
         printf("File is too big\n");
-        return -3;
+        exit(1);
     } else {
         char *content = calloc(size, sizeof(char));
         char *line = calloc(size, sizeof(char));
@@ -99,9 +101,13 @@ int saveBlock(struct Result *table, char *fileName) {
                 break;
             }
         }
+        if(savedIndex == -1){
+            printf("No free place");
+            exit(1);
+        }
+
         return savedIndex;
     }
-    return -1;
 }
 
 void printTable(struct Result *table) {

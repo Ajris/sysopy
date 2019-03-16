@@ -4,6 +4,7 @@
 *.d
 .idea
 *.cbp
+*.tar.gz
 CMakeFiles
 Makefile
 CMakeCache.txt

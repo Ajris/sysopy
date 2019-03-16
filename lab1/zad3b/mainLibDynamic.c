@@ -119,6 +119,9 @@ int main(int argc, char **argv) {
                 }
             }
             i = i + 2;
+        } else {
+            printf("Wrong command");
+            exit(1);
         }
 
         savedEnd.real = times(end);
