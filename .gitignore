@@ -2,8 +2,10 @@
 ### C template
 # Prerequisites
 *.d
+main
 .idea
 *.cbp
+/lab2/zad1/dane
 *.tar.gz
 CMakeFiles
 Makefile
