@@ -6,7 +6,9 @@ main
 .idea
 *.cbp
 /lab2/zad1/dane
+/lab2/zad1/output
 *.tar.gz
+
 CMakeFiles
 Makefile
 CMakeCache.txt

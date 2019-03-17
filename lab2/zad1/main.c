@@ -14,6 +14,8 @@ char *generateRecord(int recordSize);
 
 void sortFile(char *filename, int recordNumber, int recordSize, char *type);
 
+void copyFile(char *from, char *to, int recordNumber, int recordSize, char *type);
+
 int main(int argc, char **argv) {
     srand((unsigned int) time(NULL));
     if (argc == 1) {
@@ -42,15 +44,67 @@ int main(int argc, char **argv) {
 
             i += 4;
         } else if (strcmp(argv[i], "copy") == 0) {
+            if (i + 5 >= argc) {
+                printError("Not enough parameters for copying");
+            }
 
+            char *from = argv[i + 1];
+            char *to = argv[i + 2];
+            int recordNumber = atoi(argv[i + 3]);
+            int recordSize = atoi(argv[i + 4]);
+            char *type = argv[i + 5];
+
+            copyFile(from, to, recordNumber, recordSize, type);
+
+            i += 5;
         } else {
             printError("Wrong argument");
         }
     }
 }
 
-void sortFile(char *filename, int recordNumber, int recordSize, char *type) {
+void copyFile(char *from, char *to, int recordNumber, int recordSize, char *type) {
+    if (recordNumber <= 0) {
+        printError("Wrong record number");
+    }
+    if (recordSize <= 0) {
+        printError("Wrong record size");
+    }
 
+    unsigned char *buffer = malloc(recordSize * sizeof(char));
+
+    if (strcmp(type, "sys") == 0) {
+
+    } else if (strcmp(type, "lib") == 0) {
+        FILE *fromFile = fopen(from, "r");
+        if(!fromFile){
+            printError("Cannot open reading file");
+        }
+        FILE *toFile = fopen(to, "w");
+        if(!toFile){
+            printError("Error in writing");
+        }
+
+        for(int i = 0; i < recordNumber; i++){
+            size_t elementsRead = fread(buffer, sizeof(char), recordSize, fromFile);
+            if(elementsRead != recordSize){
+                printError("Error reading");
+            }
+
+            fwrite(buffer, sizeof(char), recordSize, toFile);
+        }
+
+        fclose(fromFile);
+        fclose(toFile);
+    } else {
+        printError("Wrong type of sorting");
+    }
+
+    free(buffer);
+}
+
+
+void sortFile(char *filename, int recordNumber, int recordSize, char *type) {
     if (recordNumber <= 0) {
         printError("Wrong record number");
     }
@@ -161,7 +215,7 @@ void sortFile(char *filename, int recordNumber, int recordSize, char *type) {
 char *generateRecord(int size) {
     char *output = malloc(size * sizeof(char));
     for (int i = 0; i < size; i++) {
-        output[i] = (char) ((char) rand() % 25+97);
+        output[i] = (char) ((char) rand() % 25 + 97);
     }
     return output;
 }
