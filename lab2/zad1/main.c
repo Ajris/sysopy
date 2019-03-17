@@ -74,20 +74,34 @@ void copyFile(char *from, char *to, int recordNumber, int recordSize, char *type
     unsigned char *buffer = malloc(recordSize * sizeof(char));
 
     if (strcmp(type, "sys") == 0) {
+        int fromFile = open(from, O_RDONLY);
+        int toFile = open(to, O_WRONLY);
 
+        for (int i = 0; i < recordNumber; i++) {
+            int elementsRead = read(fromFile, buffer, recordSize * sizeof(char));
+            if (elementsRead != recordSize) {
+                printf("%d,%d", elementsRead, recordSize);
+                printError("Error reading");
+            }
+
+            write(toFile, buffer, recordSize * sizeof(char));
+        }
+
+        close(toFile);
+        close(fromFile);
     } else if (strcmp(type, "lib") == 0) {
         FILE *fromFile = fopen(from, "r");
-        if(!fromFile){
+        if (!fromFile) {
             printError("Cannot open reading file");
         }
         FILE *toFile = fopen(to, "w");
-        if(!toFile){
+        if (!toFile) {
             printError("Error in writing");
         }
 
-        for(int i = 0; i < recordNumber; i++){
+        for (int i = 0; i < recordNumber; i++) {
             size_t elementsRead = fread(buffer, sizeof(char), recordSize, fromFile);
-            if(elementsRead != recordSize){
+            if (elementsRead != recordSize) {
                 printError("Error reading");
             }
 
