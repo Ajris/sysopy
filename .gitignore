@@ -7,6 +7,8 @@ main
 *.cbp
 /lab2/zad1/dane
 /lab2/zad1/output
+/lab2/zad1/danecp
+/lab2/zad1/outputcp
 *.tar.gz
 
 CMakeFiles

@@ -21,7 +21,13 @@ int main(int argc, char **argv) {
     if (argc == 1) {
         printError("Not enough parameters");
     }
+
+    struct tms *begin = malloc(sizeof(struct tms));
+    struct tms *end = malloc(sizeof(struct tms));
+
+
     for (int i = 1; i < argc; i++) {
+        times(begin);
         if (strcmp(argv[i], "generate") == 0) {
             if (i + 3 >= argc) {
                 printError("Not enough parameters for generate");
@@ -60,6 +66,10 @@ int main(int argc, char **argv) {
         } else {
             printError("Wrong argument");
         }
+        times(end);
+        printf("USER: %lf - SYSTEM: %lf\n",
+               (double) (end->tms_utime - begin -> tms_utime) / sysconf(_SC_CLK_TCK),
+               (double) (end->tms_stime - begin -> tms_stime) / sysconf(_SC_CLK_TCK));
     }
 }
 
