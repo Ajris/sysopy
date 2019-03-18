@@ -6,6 +6,7 @@
 #include <time.h>
 #include <ftw.h>
 #include <dirent.h>
+#include <limits.h>
 
 char *timeComparingType;
 time_t inputTime;
@@ -61,7 +62,7 @@ void statTraverse(char* dirPath){
         }
         char* fullPath = concatenatePath(dirPath, file);
         lstat(fullPath, &fileStats);
-        if (compareTime(fileStats.st_mtime) == 0) {
+        if (compareTime(fileStats.st_mtime) == 1) {
             printFileInformation(fullPath, &fileStats);
         }
         if(S_ISDIR(fileStats.st_mode)){
@@ -76,7 +77,7 @@ void statTraverse(char* dirPath){
 }
 
 char* concatenatePath(char* dirPath, struct dirent* filePath){
-    char* result = malloc(strlen(dirPath) + strlen(filePath->d_name) + 2);
+    char* result = malloc(PATH_MAX);
     sprintf(result, "%s/%s", dirPath, filePath->d_name);
     return result;
 }
@@ -119,7 +120,7 @@ void printFileInformation(const char *fpath, const struct stat *sb) {
 }
 
 int fn(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf) {
-    if (compareTime(sb->st_mtime) == 0) {
+    if (compareTime(sb->st_mtime) == 1) {
         printFileInformation(fpath, sb);
     }
     return 0;
