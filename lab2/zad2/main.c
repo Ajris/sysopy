@@ -5,6 +5,7 @@
 #include <string.h>
 #include <time.h>
 #include <ftw.h>
+#include <dirent.h>
 
 char *timeComparingType;
 time_t inputTime;
@@ -18,6 +19,10 @@ int compareTime(time_t fileTime);
 int fn(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf);
 
 void printFileInformation(const char *fpath, const struct stat *sb);
+
+void statTraverse(char* dirPath);
+
+int fileIsCurrentDirOrParentDir(const struct dirent *file);
 
 int main(int argc, char **argv) {
     if (argc != 5) {
@@ -34,10 +39,43 @@ int main(int argc, char **argv) {
             printError("Something wrong occured during nftw");
         }
     } else if (strcmp(type, "stat") == 0) {
-
+        statTraverse(directory);
     } else {
         printError("Wrong type specified");
     }
+}
+
+void statTraverse(char* dirPath){
+    DIR* dir = opendir(dirPath);
+    if(dir == NULL){
+        printError("Couldnt open directory");
+    }
+    struct dirent* file;
+    struct stat fileStats;
+
+    while((file = readdir(dir)) != 0){
+        if (fileIsCurrentDirOrParentDir(file)){
+            continue;
+        }
+        char* fullPath = malloc(strlen(dirPath) + strlen(file->d_name) + 2);
+        sprintf(fullPath, "%s/%s", dirPath, file->d_name);
+        lstat(fullPath, &fileStats);
+        if (!compareTime(fileStats.st_mtime)) {
+            printFileInformation(fullPath, &fileStats);
+        }
+        if(S_ISDIR(fileStats.st_mode)){
+            statTraverse(fullPath);
+        }
+        free(fullPath);
+    }
+
+    if(closedir(dir) == -1){
+        printError("Something went wrong while closing directory");
+    }
+}
+
+int fileIsCurrentDirOrParentDir(const struct dirent *file) {
+    return strcmp(file->d_name, ".") == 0 || strcmp(file->d_name, "..") == 0;
 }
 
 void printFileInformation(const char *fpath, const struct stat *sb) {
