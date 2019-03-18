@@ -24,6 +24,8 @@ void statTraverse(char* dirPath);
 
 int fileIsCurrentDirOrParentDir(const struct dirent *file);
 
+char* concatenatePath(char* dirPath, struct dirent* filePath);
+
 int main(int argc, char **argv) {
     if (argc != 5) {
         printError("Wrong number of arguments");
@@ -57,10 +59,9 @@ void statTraverse(char* dirPath){
         if (fileIsCurrentDirOrParentDir(file)){
             continue;
         }
-        char* fullPath = malloc(strlen(dirPath) + strlen(file->d_name) + 2);
-        sprintf(fullPath, "%s/%s", dirPath, file->d_name);
+        char* fullPath = concatenatePath(dirPath, file);
         lstat(fullPath, &fileStats);
-        if (!compareTime(fileStats.st_mtime)) {
+        if (compareTime(fileStats.st_mtime) == 0) {
             printFileInformation(fullPath, &fileStats);
         }
         if(S_ISDIR(fileStats.st_mode)){
@@ -72,6 +73,12 @@ void statTraverse(char* dirPath){
     if(closedir(dir) == -1){
         printError("Something went wrong while closing directory");
     }
+}
+
+char* concatenatePath(char* dirPath, struct dirent* filePath){
+    char* result = malloc(strlen(dirPath) + strlen(filePath->d_name) + 2);
+    sprintf(result, "%s/%s", dirPath, filePath->d_name);
+    return result;
 }
 
 int fileIsCurrentDirOrParentDir(const struct dirent *file) {
@@ -112,7 +119,7 @@ void printFileInformation(const char *fpath, const struct stat *sb) {
 }
 
 int fn(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf) {
-    if (!compareTime(sb->st_mtime)) {
+    if (compareTime(sb->st_mtime) == 0) {
         printFileInformation(fpath, sb);
     }
     return 0;
