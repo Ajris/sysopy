@@ -239,7 +239,7 @@ void sortFile(char *filename, int recordNumber, int recordSize, char *type) {
 char *generateRecord(int size) {
     char *output = malloc(size * sizeof(char));
     for (int i = 0; i < size; i++) {
-        output[i] = (char) ((char) rand() % 25 + 97);
+        output[i] = (char) (rand() % 256);
     }
     return output;
 }
