@@ -75,6 +75,7 @@ void statTraverse(char *dirPath) {
                     execl(file->d_name, "ls", "-l", NULL);
                     free(extendedLsCommand);
                     exit(0);
+                    //know now
                 }
                 wait(NULL);
             }
