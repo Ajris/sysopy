@@ -7,6 +7,8 @@
 #include <ftw.h>
 #include <dirent.h>
 #include <limits.h>
+#include <zconf.h>
+#include <sys/wait.h>
 
 char *timeComparingType;
 time_t inputTime;
@@ -57,18 +59,27 @@ void statTraverse(char *dirPath) {
     struct stat fileStats;
 
     while ((file = readdir(dir)) != 0) {
-        if (fileIsCurrentDirOrParentDir(file)) {
-            continue;
+        if (!fileIsCurrentDirOrParentDir(file)) {
+            char *fullPath = concatenatePath(dirPath, file);
+            lstat(fullPath, &fileStats);
+            if (compareTime(fileStats.st_mtime) == 1) {
+//                printFileInformation(fullPath, &fileStats);
+            }
+            if (S_ISDIR(fileStats.st_mode)) {
+                statTraverse(fullPath);
+                if (fork() == 0) {
+                    printf("NAME: %s; PID: %d\n", file->d_name, getpid());
+                    char *extendedLsCommand = malloc(strlen(fullPath) * sizeof(char) + 7);
+                    char *lsCommand = "ls -l";
+                    sprintf(extendedLsCommand, "%s %s", lsCommand, fullPath);
+                    system(extendedLsCommand);
+                    free(extendedLsCommand);
+                    exit(1);
+                }
+                wait(NULL);
+            }
+            free(fullPath);
         }
-        char *fullPath = concatenatePath(dirPath, file);
-        lstat(fullPath, &fileStats);
-        if (compareTime(fileStats.st_mtime) == 1) {
-            printFileInformation(fullPath, &fileStats);
-        }
-        if (S_ISDIR(fileStats.st_mode)) {
-            statTraverse(fullPath);
-        }
-        free(fullPath);
     }
 
     if (closedir(dir) == -1) {
