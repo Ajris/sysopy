@@ -21,11 +21,11 @@ int fn(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbu
 
 void printFileInformation(const char *fpath, const struct stat *sb);
 
-void statTraverse(char* dirPath);
+void statTraverse(char *dirPath);
 
 int fileIsCurrentDirOrParentDir(const struct dirent *file);
 
-char* concatenatePath(char* dirPath, struct dirent* filePath);
+char *concatenatePath(char *dirPath, struct dirent *filePath);
 
 int main(int argc, char **argv) {
     if (argc != 5) {
@@ -48,36 +48,36 @@ int main(int argc, char **argv) {
     }
 }
 
-void statTraverse(char* dirPath){
-    DIR* dir = opendir(dirPath);
-    if(dir == NULL){
+void statTraverse(char *dirPath) {
+    DIR *dir = opendir(dirPath);
+    if (dir == NULL) {
         printError("Couldnt open directory");
     }
-    struct dirent* file;
+    struct dirent *file;
     struct stat fileStats;
 
-    while((file = readdir(dir)) != 0){
-        if (fileIsCurrentDirOrParentDir(file)){
+    while ((file = readdir(dir)) != 0) {
+        if (fileIsCurrentDirOrParentDir(file)) {
             continue;
         }
-        char* fullPath = concatenatePath(dirPath, file);
+        char *fullPath = concatenatePath(dirPath, file);
         lstat(fullPath, &fileStats);
         if (compareTime(fileStats.st_mtime) == 1) {
             printFileInformation(fullPath, &fileStats);
         }
-        if(S_ISDIR(fileStats.st_mode)){
+        if (S_ISDIR(fileStats.st_mode)) {
             statTraverse(fullPath);
         }
         free(fullPath);
     }
 
-    if(closedir(dir) == -1){
+    if (closedir(dir) == -1) {
         printError("Something went wrong while closing directory");
     }
 }
 
-char* concatenatePath(char* dirPath, struct dirent* filePath){
-    char* result = malloc(PATH_MAX);
+char *concatenatePath(char *dirPath, struct dirent *filePath) {
+    char *result = malloc(PATH_MAX);
     sprintf(result, "%s/%s", dirPath, filePath->d_name);
     return result;
 }
