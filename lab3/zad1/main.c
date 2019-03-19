@@ -68,13 +68,13 @@ void statTraverse(char *dirPath) {
             if (S_ISDIR(fileStats.st_mode)) {
                 statTraverse(fullPath);
                 if (fork() == 0) {
-                    printf("NAME: %s; PID: %d\n", file->d_name, getpid());
-                    char *extendedLsCommand = malloc(strlen(fullPath) * sizeof(char) + 7);
+                    char *extendedLsCommand = malloc(strlen(fullPath) * sizeof(char) * 2 + 100);
                     char *lsCommand = "ls -l";
                     sprintf(extendedLsCommand, "%s %s", lsCommand, fullPath);
-                    system(extendedLsCommand);
+                    printf("NAME: %s; PID: %d\n", fullPath, getpid());
+                    execl(file->d_name, "ls", "-l", NULL);
                     free(extendedLsCommand);
-                    exit(1);
+                    exit(0);
                 }
                 wait(NULL);
             }
