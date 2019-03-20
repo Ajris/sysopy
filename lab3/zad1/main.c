@@ -70,16 +70,12 @@ void statTraverse(char *dirPath) {
             if (S_ISDIR(fileStats.st_mode)) {
                 statTraverse(fullPath);
                 if (vfork() == 0) {
-                    DIR *checkDirectory = opendir(fullPath);
-                    if (dir != NULL && notContainingSpaces(fullPath) == 1) {
-                        char *extendedLsCommand = malloc(strlen(fullPath) * sizeof(char) * 2 + 100);
-                        char *lsCommand = "ls -l";
-                        sprintf(extendedLsCommand, "%s %s", lsCommand, fullPath);
-                        printf("NAME: %s; PID: %d\n", fullPath, getpid());
-                        system(extendedLsCommand);
-                        free(extendedLsCommand);
-                    }
-                    closedir(checkDirectory);
+                    char *extendedLsCommand = malloc(strlen(fullPath) * sizeof(char) + 10);
+                    char *lsCommand = "ls -l";
+                    sprintf(extendedLsCommand, "%s '%s'", lsCommand, fullPath);
+                    printf("NAME: %s; PID: %d\n", fullPath, getpid());
+                    system(extendedLsCommand);
+                    free(extendedLsCommand);
                     exit(0);
                 }
             }
