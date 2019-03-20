@@ -29,6 +29,8 @@ int fileIsCurrentDirOrParentDir(const struct dirent *file);
 
 char *concatenatePath(char *dirPath, struct dirent *filePath);
 
+int notContainingSpaces(char *fullPath);
+
 int main(int argc, char **argv) {
     if (argc != 5) {
         printError("Wrong number of arguments");
@@ -63,21 +65,23 @@ void statTraverse(char *dirPath) {
             char *fullPath = concatenatePath(dirPath, file);
             lstat(fullPath, &fileStats);
             if (compareTime(fileStats.st_mtime) == 1) {
-//                printFileInformation(fullPath, &fileStats);
+                printFileInformation(fullPath, &fileStats);
             }
             if (S_ISDIR(fileStats.st_mode)) {
                 statTraverse(fullPath);
-                if (fork() == 0) {
-                    char *extendedLsCommand = malloc(strlen(fullPath) * sizeof(char) * 2 + 100);
-                    char *lsCommand = "ls -l";
-                    sprintf(extendedLsCommand, "%s %s", lsCommand, fullPath);
-                    printf("NAME: %s; PID: %d\n", fullPath, getpid());
-                    execl(file->d_name, "ls", "-l", NULL);
-                    free(extendedLsCommand);
+                if (vfork() == 0) {
+                    DIR *checkDirectory = opendir(fullPath);
+                    if (dir != NULL && notContainingSpaces(fullPath) == 1) {
+                        char *extendedLsCommand = malloc(strlen(fullPath) * sizeof(char) * 2 + 100);
+                        char *lsCommand = "ls -l";
+                        sprintf(extendedLsCommand, "%s %s", lsCommand, fullPath);
+                        printf("NAME: %s; PID: %d\n", fullPath, getpid());
+                        system(extendedLsCommand);
+                        free(extendedLsCommand);
+                    }
+                    closedir(checkDirectory);
                     exit(0);
-                    //know now
                 }
-                wait(NULL);
             }
             free(fullPath);
         }
@@ -86,6 +90,15 @@ void statTraverse(char *dirPath) {
     if (closedir(dir) == -1) {
         printError("Something went wrong while closing directory");
     }
+}
+
+int notContainingSpaces(char *path) {
+    for (int i = 0; i < strlen(path); i++) {
+        if (path[i] == ' ') {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 char *concatenatePath(char *dirPath, struct dirent *filePath) {
