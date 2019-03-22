@@ -1,15 +1,20 @@
-#define _XOPEN_SOURCE 500
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <ftw.h>
-#include <dirent.h>
-#include <limits.h>
-#include <zconf.h>
-#include <sys/wait.h>
+
+void printError(char* message);
 
 int main(int argc, char **argv) {
+    if(argc != 4){
+        printError("Wrong number of arguments");
+    }
+    char* filename = argv[1];
+    char* time = argv[2];
+    char* type = argv[3];
+    printf("%s %s %s", filename, time, type);
+}
 
+void printError(char *message) {
+    printf("%s\n", message);
+    exit(1);
 }

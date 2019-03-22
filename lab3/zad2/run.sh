@@ -2,4 +2,4 @@
 
 cmake .
 make
-./monitor
+./monitor lista.txt 6 1

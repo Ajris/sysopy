@@ -10,7 +10,7 @@ main
 /lab2/zad1/danecp
 /lab2/zad1/outputcp
 *.tar.gz
-
+monitor
 CMakeFiles
 Makefile
 CMakeCache.txt
