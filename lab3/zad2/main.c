@@ -25,12 +25,15 @@ struct input *parseArguments(char **argv);
 
 struct fileData **readFromFile(char *filename);
 
+void createProcesses(struct fileData ** fileData, struct input* input);
+
 int main(int argc, char **argv) {
     if (argc != 4) {
         printError("Wrong number of arguments");
     }
     struct input *input = parseArguments(argv);
     struct fileData **fileData = readFromFile(input->filename);
+    createProcesses(fileData, input);
 
     printf("%s, %d, %d\n", input->filename, input->monitoringTime, input->type);
 
@@ -43,6 +46,10 @@ int main(int argc, char **argv) {
     }
     free(fileData);
     free(input);
+}
+
+void createProcesses(struct fileData ** fileData, struct input* input){
+
 }
 
 struct fileData **readFromFile(char *filename) {
