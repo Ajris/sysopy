@@ -61,12 +61,12 @@ struct fileData **readFromFile(char *filename) {
         fileData[numOfFiles]->path = splitedLine;
         splitedLine = strtok(NULL, " ");
         fileData[numOfFiles]->repeatTime = atoi(splitedLine);
-        numOfFiles++;
         splitedLine = strtok(NULL, " ");
 
         if (splitedLine != NULL)
             printError("Wrong amount of arguments for file specified");
 
+        numOfFiles++;
         if (numOfFiles > MAX_FILE_NUM)
             printError("Too many files added in lista");
     }
