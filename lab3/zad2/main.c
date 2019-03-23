@@ -49,17 +49,17 @@ int main(int argc, char **argv) {
 void createProcesses(struct fileData **fileData, struct input *input) {
     int *tmp = malloc(sizeof(int));
     time_t* startTime = malloc(sizeof(time_t) * numOfFiles);
-    time_t* endTimes = malloc(sizeof(time_t) * numOfFiles);
-
-    time_t start1 = time(NULL);
-    time_t end1 = start1 + 10;
+    time_t* endTime = malloc(sizeof(time_t) * numOfFiles);
 
     for (int i = 0; i < numOfFiles; i++) {
+        sleep(1);
+        startTime[i] = time(NULL);
+        endTime[i] = startTime[i] + input->monitoringTime;
         if ((fileData[i]->pid = fork()) == 0) {
             execl("watch", "-n", fileData[i]->repeatTime, "-d", "cat", fileData[i]->path, NULL);
             printf("%s-%d\n", fileData[i]->path, getpid());
-            while(start1 < end1){
-                start1 = time(NULL);
+            while(startTime[i] < endTime[i]){
+                startTime[i] = time(NULL);
             }
             exit(11 + i);
         }
