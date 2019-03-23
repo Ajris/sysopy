@@ -80,15 +80,13 @@ struct fileData **readFromFile(char *filename) {
 
     char *currentLine = malloc(sizeof(char) * MAX_FILELINE);
     while (fgets(currentLine, MAX_FILELINE, file) != NULL) {
-        printf("%s<=", currentLine);
         char *token = strtok(currentLine, " ");
         fileData[numOfFiles]->path = token;
-        printf("%s\n", fileData[numOfFiles]->path);
-        if (token != NULL) {
-            token = strtok(NULL, currentLine);
-            fileData[numOfFiles]->repeatTime = atoi(token);
-        }
-
+        token = strtok(NULL, " ");
+        fileData[numOfFiles]->repeatTime = atoi(token);
+        token = strtok(NULL, " ");
+        if(token != NULL)
+            printError("Wrong number of arguments near file");
         numOfFiles++;
 
         if (numOfFiles > MAX_FILE_NUM)
