@@ -52,7 +52,6 @@ void createProcesses(struct fileData **fileData, struct input *input) {
     time_t* endTime = malloc(sizeof(time_t) * numOfFiles);
 
     for (int i = 0; i < numOfFiles; i++) {
-        sleep(1);
         startTime[i] = time(NULL);
         endTime[i] = startTime[i] + input->monitoringTime;
         if ((fileData[i]->pid = fork()) == 0) {
