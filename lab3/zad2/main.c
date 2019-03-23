@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <zconf.h>
 
 #define MAX_FILE_NUM 100
 #define MAX_FILELINE 100
@@ -37,10 +38,6 @@ int main(int argc, char **argv) {
 
     printf("%s, %d, %d\n", input->filename, input->monitoringTime, input->type);
 
-    for (int i = 0; i < numOfFiles; i++) {
-        printf("%s, %d\n", fileData[i]->path, fileData[i]->repeatTime);
-    }
-
     for (int i = 0; i < MAX_FILE_NUM; i++) {
         free(fileData[i]);
     }
@@ -49,7 +46,12 @@ int main(int argc, char **argv) {
 }
 
 void createProcesses(struct fileData ** fileData, struct input* input){
-
+    for (int i = 0; i < numOfFiles; i++) {
+        if (vfork() == 0) {
+            printf("%s-%d\n",fileData[i]->path,getpid());
+            exit(1);
+        }
+    }
 }
 
 struct fileData **readFromFile(char *filename) {
@@ -77,7 +79,6 @@ struct fileData **readFromFile(char *filename) {
         if (numOfFiles > MAX_FILE_NUM)
             printError("Too many files added in lista");
     }
-
     fclose(file);
     return fileData;
 }
