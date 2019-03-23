@@ -79,13 +79,14 @@ struct fileData **readFromFile(char *filename) {
         printError("Couldn't open file");
 
     char *currentLine = malloc(sizeof(char) * MAX_FILELINE);
+
     while (fgets(currentLine, MAX_FILELINE, file) != NULL) {
         char *token = strtok(currentLine, " ");
-        fileData[numOfFiles]->path = token;
-        token = strtok(NULL, " ");
-        fileData[numOfFiles]->repeatTime = atoi(token);
-        token = strtok(NULL, " ");
-        if(token != NULL)
+        fileData[numOfFiles]->path = strdup(token);
+        char* ptr = strtok(NULL, " ");
+        fileData[numOfFiles]->repeatTime = atoi(ptr);
+        ptr = strtok(NULL, " ");
+        if(ptr != NULL)
             printError("Wrong number of arguments near file");
         numOfFiles++;
 
