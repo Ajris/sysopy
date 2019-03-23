@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <zconf.h>
+#include <wait.h>
+#include <time.h>
 
 #define MAX_FILE_NUM 100
 #define MAX_FILELINE 100
@@ -17,6 +19,7 @@ struct input {
 struct fileData {
     char *path;
     int repeatTime;
+    pid_t pid;
 };
 
 
@@ -26,7 +29,7 @@ struct input *parseArguments(char **argv);
 
 struct fileData **readFromFile(char *filename);
 
-void createProcesses(struct fileData ** fileData, struct input* input);
+void createProcesses(struct fileData **fileData, struct input *input);
 
 int main(int argc, char **argv) {
     if (argc != 4) {
@@ -34,9 +37,7 @@ int main(int argc, char **argv) {
     }
     struct input *input = parseArguments(argv);
     struct fileData **fileData = readFromFile(input->filename);
-    createProcesses(fileData, input);
-
-    printf("%s, %d, %d\n", input->filename, input->monitoringTime, input->type);
+//    createProcesses(fileData, input);
 
     for (int i = 0; i < MAX_FILE_NUM; i++) {
         free(fileData[i]);
@@ -45,13 +46,26 @@ int main(int argc, char **argv) {
     free(input);
 }
 
-void createProcesses(struct fileData ** fileData, struct input* input){
+void createProcesses(struct fileData **fileData, struct input *input) {
+    int *tmp = malloc(sizeof(int));
+    time_t start = time(NULL);
+    time_t currentTime = start;
     for (int i = 0; i < numOfFiles; i++) {
-        if (vfork() == 0) {
-            printf("%s-%d\n",fileData[i]->path,getpid());
-            exit(1);
+        if ((fileData[i]->pid = fork()) == 0) {
+//            execl("watch", "-n", fileData[i]->repeatTime,"-d", "cat", fileData[i]->path, NULL);
+            printf("%s-%d\n", fileData[i]->path, getpid());
+//            if(start >= currentTime + 10){
+            exit(11 + i);
+//            }
         }
     }
+
+    for (int i = 0; i < numOfFiles; i++) {
+        wait(tmp);
+        printf("Process %d created %d file copies of %s.\n", fileData[i]->pid, WEXITSTATUS(tmp[0]), fileData[i]->path);
+    }
+
+    free(tmp);
 }
 
 struct fileData **readFromFile(char *filename) {
@@ -66,19 +80,25 @@ struct fileData **readFromFile(char *filename) {
 
     char *currentLine = malloc(sizeof(char) * MAX_FILELINE);
     while (fgets(currentLine, MAX_FILELINE, file) != NULL) {
-        char *splitedLine = strtok(currentLine, " ");
-        fileData[numOfFiles]->path = splitedLine;
-        splitedLine = strtok(NULL, " ");
-        fileData[numOfFiles]->repeatTime = atoi(splitedLine);
-        splitedLine = strtok(NULL, " ");
-
-        if (splitedLine != NULL)
-            printError("Wrong amount of arguments for file specified");
+        printf("%s<=", currentLine);
+        char *token = strtok(currentLine, " ");
+        fileData[numOfFiles]->path = token;
+        printf("%s\n", fileData[numOfFiles]->path);
+        if (token != NULL) {
+            token = strtok(NULL, currentLine);
+            fileData[numOfFiles]->repeatTime = atoi(token);
+        }
 
         numOfFiles++;
+
         if (numOfFiles > MAX_FILE_NUM)
             printError("Too many files added in lista");
     }
+
+    for (int i = 0; i < numOfFiles; i++) {
+        printf("%s-%d\n", fileData[i]->path, fileData[i]->repeatTime);
+    }
+
     fclose(file);
     return fileData;
 }
