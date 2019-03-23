@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
     }
     struct input *input = parseArguments(argv);
     struct fileData **fileData = readFromFile(input->filename);
-//    createProcesses(fileData, input);
+    createProcesses(fileData, input);
 
     for (int i = 0; i < MAX_FILE_NUM; i++) {
         free(fileData[i]);
@@ -48,20 +48,16 @@ int main(int argc, char **argv) {
 
 void createProcesses(struct fileData **fileData, struct input *input) {
     int *tmp = malloc(sizeof(int));
-    time_t start = time(NULL);
-    time_t currentTime = start;
     for (int i = 0; i < numOfFiles; i++) {
         if ((fileData[i]->pid = fork()) == 0) {
-//            execl("watch", "-n", fileData[i]->repeatTime,"-d", "cat", fileData[i]->path, NULL);
+            execl("watch", "-n", fileData[i]->repeatTime, "-d", "cat", fileData[i]->path, NULL);
             printf("%s-%d\n", fileData[i]->path, getpid());
-//            if(start >= currentTime + 10){
             exit(11 + i);
-//            }
         }
     }
 
     for (int i = 0; i < numOfFiles; i++) {
-        wait(tmp);
+        waitpid(fileData[i]->pid, tmp, 0);
         printf("Process %d created %d file copies of %s.\n", fileData[i]->pid, WEXITSTATUS(tmp[0]), fileData[i]->path);
     }
 
@@ -73,6 +69,7 @@ struct fileData **readFromFile(char *filename) {
     struct fileData **fileData = malloc(sizeof(struct fileData *) * MAX_FILE_NUM);
     for (int i = 0; i < MAX_FILE_NUM; i++) {
         fileData[i] = malloc(sizeof(struct fileData) + sizeof(char) * MAX_FILELINE);
+        fileData[i]->pid = 0;
     }
 
     if (!file)
@@ -83,10 +80,10 @@ struct fileData **readFromFile(char *filename) {
     while (fgets(currentLine, MAX_FILELINE, file) != NULL) {
         char *token = strtok(currentLine, " ");
         fileData[numOfFiles]->path = strdup(token);
-        char* ptr = strtok(NULL, " ");
+        char *ptr = strtok(NULL, " ");
         fileData[numOfFiles]->repeatTime = atoi(ptr);
         ptr = strtok(NULL, " ");
-        if(ptr != NULL)
+        if (ptr != NULL)
             printError("Wrong number of arguments near file");
         numOfFiles++;
 
