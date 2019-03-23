@@ -4,6 +4,7 @@
 #include <zconf.h>
 #include <wait.h>
 #include <time.h>
+#include <sys/stat.h>
 
 #define MAX_FILE_NUM 100
 #define MAX_FILELINE 100
@@ -48,17 +49,28 @@ int main(int argc, char **argv) {
 
 void createProcesses(struct fileData **fileData, struct input *input) {
     int *tmp = malloc(sizeof(int));
-    time_t* startTime = malloc(sizeof(time_t) * numOfFiles);
-    time_t* endTime = malloc(sizeof(time_t) * numOfFiles);
+    time_t *startTime = malloc(sizeof(time_t) * numOfFiles);
+    time_t *endTime = malloc(sizeof(time_t) * numOfFiles);
 
     for (int i = 0; i < numOfFiles; i++) {
         startTime[i] = time(NULL);
         endTime[i] = startTime[i] + input->monitoringTime;
         if ((fileData[i]->pid = fork()) == 0) {
-            execl("watch", "-n", fileData[i]->repeatTime, "-d", "cat", fileData[i]->path, NULL);
             printf("%s-%d\n", fileData[i]->path, getpid());
-            while(startTime[i] < endTime[i]){
-                startTime[i] = time(NULL);
+            time_t currentTime = startTime[i];
+            while (currentTime < endTime[i]) {
+                struct stat fileStats;
+                lstat(fileData[i]->path, &fileStats);
+                char *modificationTime = malloc(sizeof(char) * 1000);
+                strftime(modificationTime, 1000, "_%Y-%m-%d_%H-%M-%S", localtime(&fileStats.st_mtime));
+                char *newFileName = malloc(1000 * sizeof(char));
+                sprintf(newFileName, "%s%s", fileData[i]->path, modificationTime);
+                execl("/bin/cp","-i", "-p", fileData[i]->path, newFileName, NULL);
+                sleep((unsigned int) fileData[i]->repeatTime);
+                currentTime = time(NULL);
+                printf("FILE: %s AFTER: %ld", fileData[i]->path, currentTime - startTime[i]);
+                free(modificationTime);
+                free(newFileName);
             }
             exit(11 + i);
         }
