@@ -94,10 +94,6 @@ struct fileData **readFromFile(char *filename) {
             printError("Too many files added in lista");
     }
 
-    for (int i = 0; i < numOfFiles; i++) {
-        printf("%s-%d\n", fileData[i]->path, fileData[i]->repeatTime);
-    }
-
     fclose(file);
     return fileData;
 }
