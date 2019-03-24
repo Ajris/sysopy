@@ -47,41 +47,78 @@ int main(int argc, char **argv) {
     free(input);
 }
 
-void createProcesses(struct fileData **fileData, struct input *input) {
-    int *tmp = malloc(sizeof(int));
-    time_t *startTime = malloc(sizeof(time_t) * numOfFiles);
-    time_t *endTime = malloc(sizeof(time_t) * numOfFiles);
+void watchCopyNewFile(struct fileData *fileData, struct input *input) {
 
-    for (int i = 0; i < numOfFiles; i++) {
-        startTime[i] = time(NULL);
-        endTime[i] = startTime[i] + input->monitoringTime;
-        if ((fileData[i]->pid = fork()) == 0) {
-            printf("%s-%d\n", fileData[i]->path, getpid());
-            time_t currentTime = startTime[i];
-            while (currentTime < endTime[i]) {
-                struct stat fileStats;
-                lstat(fileData[i]->path, &fileStats);
-                char *modificationTime = malloc(sizeof(char) * 1000);
-                strftime(modificationTime, 1000, "_%Y-%m-%d_%H-%M-%S", localtime(&fileStats.st_mtime));
-                char *newFileName = malloc(1000 * sizeof(char));
-                sprintf(newFileName, "%s%s", fileData[i]->path, modificationTime);
-                execl("/bin/cp","-i", "-p", fileData[i]->path, newFileName, NULL);
-                sleep((unsigned int) fileData[i]->repeatTime);
-                currentTime = time(NULL);
-                printf("FILE: %s AFTER: %ld", fileData[i]->path, currentTime - startTime[i]);
-                free(modificationTime);
-                free(newFileName);
-            }
-            exit(11 + i);
-        }
+    time_t startTime = time(NULL);
+    time_t endTime = startTime + input->monitoringTime;
+    time_t currentTime = startTime;
+    int numOfCopies = 0;
+
+    struct stat fileStats;
+    if (lstat(fileData->path, &fileStats) == -1) {
+        printf("File: %s", fileData->path);
+        printError("Coudlnt read file");
     }
 
+    time_t lastModification = fileStats.st_mtime;
+    while (currentTime < endTime) {
+        if (lstat(fileData->path, &fileStats) == -1) {
+            printf("File: %s", fileData->path);
+            printError("Coudlnt read file");
+        }
+        char *modificationTime = malloc(sizeof(char) * 1000);
+        strftime(modificationTime, 1000, "_%Y-%m-%d_%H-%M-%S", localtime(&fileStats.st_mtime));
+        char *newFileName = malloc(1000 * sizeof(char));
+        sprintf(newFileName, "%s%s", fileData->path, modificationTime);
+
+        if (lastModification < fileStats.st_mtime || numOfCopies == 0) {
+            lastModification = fileStats.st_mtime;
+            pid_t newProc = vfork();
+            if (newProc == 0) {
+                execlp("cp", "cp", fileData->path, newFileName, NULL);
+            } else if (newProc == -1) {
+                printError("Something went wrong");
+            } else {
+                int status;
+                wait(&status);
+                if (status != 0) {
+                    printError("Something went wrong");
+                } else{
+                    numOfCopies++;
+                }
+            }
+        }
+        sleep((unsigned int) fileData->repeatTime);
+        currentTime = time(NULL);
+        free(modificationTime);
+        free(newFileName);
+    }
+    exit(numOfCopies);
+}
+
+void createProcesses(struct fileData **fileData, struct input *input) {
     for (int i = 0; i < numOfFiles; i++) {
-        waitpid(fileData[i]->pid, tmp, 0);
-        printf("Process %d created %d file copies of %s.\n", fileData[i]->pid, WEXITSTATUS(tmp[0]), fileData[i]->path);
+        pid_t curr = fork();
+        if (curr == 0)
+            if (input->type == 0) {
+                watchCopyNewFile(fileData[i], input);
+            } else if (input->type == 1) {
+
+            } else {
+                printError("Unknown type");
+            }
+        else {
+        }
+    }
+    int *tmp = malloc(sizeof(int));
+
+    for (int i = 0; i < numOfFiles; i++) {
+        pid_t curr = wait(tmp);
+        printf("Process %d created %d file copies.\n", curr, WEXITSTATUS(tmp[0]));
     }
     free(tmp);
 }
+
 
 struct fileData **readFromFile(char *filename) {
     FILE *file = fopen(filename, "r");
