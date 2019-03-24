@@ -238,5 +238,5 @@ struct input *parseArguments(char **argv) {
 
 void printError(char *message) {
     printf("%s\n", message);
-    exit(1);
+    exit(0);
 }
