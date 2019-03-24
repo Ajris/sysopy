@@ -20,7 +20,6 @@ struct input {
 struct fileData {
     char *path;
     int repeatTime;
-    pid_t pid;
 };
 
 
@@ -125,7 +124,6 @@ struct fileData **readFromFile(char *filename) {
     struct fileData **fileData = malloc(sizeof(struct fileData *) * MAX_FILE_NUM);
     for (int i = 0; i < MAX_FILE_NUM; i++) {
         fileData[i] = malloc(sizeof(struct fileData) + sizeof(char) * MAX_FILELINE);
-        fileData[i]->pid = 0;
     }
 
     if (!file)
