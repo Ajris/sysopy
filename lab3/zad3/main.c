@@ -5,6 +5,7 @@
 #include <wait.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <sys/resource.h>
 #include <dirent.h>
 
 #define MAX_FILE_NUM 100
@@ -16,6 +17,8 @@ struct input {
     char *filename;
     int monitoringTime;
     int type;
+    rlim_t cpu;
+    rlim_t memory;
 };
 
 struct fileData {
@@ -33,7 +36,7 @@ struct fileData **readFromFile(char *filename);
 void createProcesses(struct fileData **fileData, struct input *input);
 
 int main(int argc, char **argv) {
-    if (argc != 4) {
+    if (argc != 6) {
         printError("Wrong number of arguments");
     }
     struct input *input = parseArguments(argv);
@@ -108,7 +111,7 @@ char *getContent(char *filename) {
 
     char *content = malloc(fileinfo.st_size + 1);
     if (fread(content, 1, fileinfo.st_size, file) != fileinfo.st_size) {
-        printError("Could not read file");
+        printError("Error while reading file, probably not enough time for reading");
     }
 
     content[fileinfo.st_size] = '\0';
@@ -116,9 +119,9 @@ char *getContent(char *filename) {
     return content;
 }
 
-char* getOnlyFileName(char* filePath){
-    char* fileName = strchr(filePath, '/');
-    if(fileName == NULL){
+char *getOnlyFileName(char *filePath) {
+    char *fileName = strchr(filePath, '/');
+    if (fileName == NULL) {
         printError("Something went wrong with parsing name of file");
     }
     return fileName + 1;
@@ -151,11 +154,11 @@ void watchFileTomemory(struct fileData *fileData, struct input *input) {
         sprintf(newFileName, "archiwum/%s%s", getOnlyFileName(fileData->path), modificationTime);
         if (lastModification < fileStats.st_mtime) {
             DIR *dir = opendir("archiwum");
-            if(!dir){
+            if (!dir) {
                 mkdir("archiwum", 0777);
             }
             FILE *file = fopen(newFileName, "w");
-            if(!file){
+            if (!file) {
                 printError("Coudlnt created file");
             }
             fwrite(content, 1, strlen(content), file);
@@ -177,7 +180,18 @@ void watchFileTomemory(struct fileData *fileData, struct input *input) {
 void createProcesses(struct fileData **fileData, struct input *input) {
     for (int i = 0; i < numOfFiles; i++) {
         pid_t curr = fork();
-        if (curr == 0)
+        if (curr == 0) {
+            struct rlimit cpuLimit;
+            struct rlimit memoryLimit;
+
+            cpuLimit.rlim_cur = input->cpu;
+            cpuLimit.rlim_max = input->cpu;
+            memoryLimit.rlim_cur = input->memory;
+            memoryLimit.rlim_max = input->memory;
+
+            if (setrlimit(RLIMIT_CPU, &cpuLimit)) printError("setting cpu");
+            if (setrlimit(RLIMIT_AS, &memoryLimit)) printError("setting memory");
+
             if (input->type == 0) {
                 watchCopyNewFile(fileData[i], input);
             } else if (input->type == 1) {
@@ -185,14 +199,27 @@ void createProcesses(struct fileData **fileData, struct input *input) {
             } else {
                 printError("Unknown type");
             }
-        else {
+        } else {
         }
     }
     int *tmp = malloc(sizeof(int));
 
     for (int i = 0; i < numOfFiles; i++) {
+        struct rusage usageBefore;
+        getrusage(RUSAGE_CHILDREN, &usageBefore);
+
         pid_t curr = wait(tmp);
         printf("Process %d created %d file copies.\n", curr, WEXITSTATUS(tmp[0]));
+
+        struct rusage usageAfter;
+        getrusage(RUSAGE_CHILDREN, &usageAfter);
+
+        printf("USER: %ld.%06ld\n",
+               usageAfter.ru_utime.tv_sec - usageBefore.ru_utime.tv_sec,
+               usageAfter.ru_utime.tv_usec - usageBefore.ru_utime.tv_usec);
+        printf("SYSTEM:  %ld.%06ld\n",
+               usageAfter.ru_stime.tv_sec - usageBefore.ru_stime.tv_sec,
+               usageAfter.ru_stime.tv_usec - usageBefore.ru_stime.tv_usec);
     }
     free(tmp);
 }
@@ -233,6 +260,8 @@ struct input *parseArguments(char **argv) {
     input->filename = argv[1];
     input->monitoringTime = atoi(argv[2]);
     input->type = atoi(argv[3]);
+    input->cpu = atoi(argv[4]);
+    input->memory = atoi(argv[5]);
     return input;
 }
 

@@ -2,5 +2,5 @@
 
 cmake .
 make
-./monitor lista.txt 10 1
-./tester files/file2 1 2 5
+./monitor lista.txt 30 1 1 1 &
+./tester files/file1 1 2 5
