@@ -5,6 +5,7 @@
 #include <wait.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <dirent.h>
 
 #define MAX_FILE_NUM 100
 #define MAX_FILELINE 100
@@ -115,6 +116,14 @@ char *getContent(char *filename) {
     return content;
 }
 
+char* getOnlyFileName(char* filePath){
+    char* fileName = strchr(filePath, '/');
+    if(fileName == NULL){
+        printError("Something went wrong with parsing name of file");
+    }
+    return fileName + 1;
+}
+
 void watchFileTomemory(struct fileData *fileData, struct input *input) {
     time_t startTime = time(NULL);
     time_t endTime = startTime + input->monitoringTime;
@@ -139,15 +148,22 @@ void watchFileTomemory(struct fileData *fileData, struct input *input) {
         char *modificationTime = malloc(sizeof(char) * 1000);
         strftime(modificationTime, 1000, "_%Y-%m-%d_%H-%M-%S", localtime(&fileStats.st_mtime));
         char *newFileName = malloc(1000 * sizeof(char));
-        sprintf(newFileName, "%s%s", fileData->path, modificationTime);
-
+        sprintf(newFileName, "archiwum/%s%s", getOnlyFileName(fileData->path), modificationTime);
         if (lastModification < fileStats.st_mtime) {
+            DIR *dir = opendir("archiwum");
+            if(!dir){
+                mkdir("archiwum", 0777);
+            }
             FILE *file = fopen(newFileName, "w");
+            if(!file){
+                printError("Coudlnt created file");
+            }
             fwrite(content, 1, strlen(content), file);
             fclose(file);
             lastModification = fileStats.st_mtime;
             content = getContent(fileData->path);
             numOfCopies++;
+            closedir(dir);
         }
         sleep((unsigned int) fileData->repeatTime);
         currentTime = time(NULL);
