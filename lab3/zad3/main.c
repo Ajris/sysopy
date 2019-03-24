@@ -262,6 +262,11 @@ struct input *parseArguments(char **argv) {
     input->type = atoi(argv[3]);
     input->cpu = atoi(argv[4]);
     input->memory = atoi(argv[5]);
+
+    if(input->monitoringTime <= 0 || (input->type != 1 && input->type != 0)|| input->cpu <= 0 || input->memory <= 0){
+        printError("Wrong input");
+    }
+
     return input;
 }
 

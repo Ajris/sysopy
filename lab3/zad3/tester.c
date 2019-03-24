@@ -22,6 +22,10 @@ int main(int argc, char **argv) {
     int pmax = atoi(argv[3]);
     int bytes = atoi(argv[4]);
 
+    if(pmin <= 0 || pmax <= 0 || bytes <= 0 || pmin > pmax){
+        printError("Wrong input");
+    }
+
     srand(time(NULL));
 
     char *additionalContent = malloc(bytes + 1);
