@@ -127,7 +127,7 @@ char *getOnlyFileName(char *filePath) {
     return fileName + 1;
 }
 
-void watchFileTomemory(struct fileData *fileData, struct input *input) {
+void watchFileToMemory(struct fileData *fileData, struct input *input) {
     time_t startTime = time(NULL);
     time_t endTime = startTime + input->monitoringTime;
     time_t currentTime = startTime;
@@ -195,7 +195,7 @@ void createProcesses(struct fileData **fileData, struct input *input) {
             if (input->type == 0) {
                 watchCopyNewFile(fileData[i], input);
             } else if (input->type == 1) {
-                watchFileTomemory(fileData[i], input);
+                watchFileToMemory(fileData[i], input);
             } else {
                 printError("Unknown type");
             }

@@ -124,7 +124,7 @@ char* getOnlyFileName(char* filePath){
     return fileName + 1;
 }
 
-void watchFileTomemory(struct fileData *fileData, struct input *input) {
+void watchFileToMemory(struct fileData *fileData, struct input *input) {
     time_t startTime = time(NULL);
     time_t endTime = startTime + input->monitoringTime;
     time_t currentTime = startTime;
@@ -181,7 +181,7 @@ void createProcesses(struct fileData **fileData, struct input *input) {
             if (input->type == 0) {
                 watchCopyNewFile(fileData[i], input);
             } else if (input->type == 1) {
-                watchFileTomemory(fileData[i], input);
+                watchFileToMemory(fileData[i], input);
             } else {
                 printError("Unknown type");
             }
@@ -198,35 +198,6 @@ void createProcesses(struct fileData **fileData, struct input *input) {
 }
 
 
-struct fileData **readFromFile(char *filename) {
-    FILE *file = fopen(filename, "r");
-    struct fileData **fileData = malloc(sizeof(struct fileData *) * MAX_FILE_NUM);
-    for (int i = 0; i < MAX_FILE_NUM; i++) {
-        fileData[i] = malloc(sizeof(struct fileData) + sizeof(char) * MAX_FILELINE);
-    }
-
-    if (!file)
-        printError("Couldn't open file");
-
-    char *currentLine = malloc(sizeof(char) * MAX_FILELINE);
-
-    while (fgets(currentLine, MAX_FILELINE, file) != NULL) {
-        char *token = strtok(currentLine, " ");
-        fileData[numOfFiles]->path = strdup(token);
-        char *ptr = strtok(NULL, " ");
-        fileData[numOfFiles]->repeatTime = atoi(ptr);
-        ptr = strtok(NULL, " ");
-        if (ptr != NULL)
-            printError("Wrong number of arguments near file");
-        numOfFiles++;
-
-        if (numOfFiles > MAX_FILE_NUM)
-            printError("Too many files added in lista");
-    }
-
-    fclose(file);
-    return fileData;
-}
 
 struct input *parseArguments(char **argv) {
     struct input *input = malloc(sizeof(struct input));

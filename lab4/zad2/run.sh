@@ -2,4 +2,4 @@
 
 cmake .
 make
-./main
+./main lista.txt
