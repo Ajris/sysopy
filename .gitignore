@@ -4,6 +4,7 @@
 *.d
 main
 .idea
+main2
 *.cbp
 /lab2/zad1/dane
 /lab2/zad1/output
