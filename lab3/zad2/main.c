@@ -192,7 +192,7 @@ void createProcesses(struct fileData **fileData, struct input *input) {
 
     for (int i = 0; i < numOfFiles; i++) {
         pid_t curr = wait(tmp);
-        printf("Process %d created %d file copies.\n", curr, WEXITSTATUS(tmp[0]));
+        printf("Process %d created %d file copies %s.\n", curr, WEXITSTATUS(tmp[0]), fileData[i]->path);
     }
     free(tmp);
 }
