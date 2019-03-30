@@ -2,5 +2,5 @@
 
 cmake .
 make
-./sender.c &
-./catcher.c
+./sender &
+./catcher
