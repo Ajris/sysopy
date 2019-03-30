@@ -20,6 +20,7 @@ struct fileData {
     char *path;
     int pid;
     int stopped;
+    int repeatingTime;
 };
 
 void printError(char *message);
@@ -114,7 +115,7 @@ void watchFileToMemory(struct fileData *fileData, struct input *input) {
         }
         free(modificationTime);
         free(newFileName);
-        sleep(1);
+        sleep(fileData->repeatingTime);
     }
     free(content);
 }
@@ -160,9 +161,13 @@ struct fileData **readFromFile(char *filename) {
     char *currentLine = malloc(sizeof(char) * MAX_FILELINE);
 
     while (fgets(currentLine, MAX_FILELINE, file) != NULL) {
-        fileData[numOfFiles]->path = strdup(currentLine);
-        if(fileData[numOfFiles]->path[strlen(currentLine) - 1] == '\n')
-        fileData[numOfFiles]->path[strlen(currentLine) - 1] = '\0';
+        char *token = strtok(currentLine, " ");
+        fileData[numOfFiles]->path = strdup(token);
+        char *ptr = strtok(NULL, " ");
+        fileData[numOfFiles]->repeatingTime = atoi(ptr);
+        ptr = strtok(NULL, " ");
+        if (ptr != NULL)
+            printError("Wrong number of arguments near file");
         numOfFiles++;
 
         if (numOfFiles > MAX_FILE_NUM)
