@@ -25,6 +25,8 @@ struct fileData {
     int numOfCopies;
 };
 
+struct fileData **fileData;
+
 void printError(char *message);
 
 struct input *parseArguments(char **argv);
@@ -38,7 +40,7 @@ int main(int argc, char **argv) {
         printError("Wrong number of arguments");
     }
     struct input *input = parseArguments(argv);
-    struct fileData **fileData = readFromFile(input->filename);
+    fileData = readFromFile(input->filename);
     createProcesses(fileData);
 
     for (int i = 0; i < MAX_FILE_NUM; i++) {
@@ -137,14 +139,23 @@ void watchFileToMemory(struct fileData *fileData) {
     exit(fileData->numOfCopies);
 }
 
+void ctrlC_Handler(int signum) {
+    for (int i = 0; i < numOfFiles; i++) {
+        printf("PROCESS: %d || FILE: %s || IS STOPPED:%d\n", fileData[i]->pid, fileData[i]->path,
+               fileData[i]->stopped);
+    }
+}
+
 void monitorEverything(struct fileData **fileData) {
+    signal(SIGINT, ctrlC_Handler);
     while (1) {
         char *value = malloc(sizeof(char) * 64);
         fgets(value, 20, stdin);
         if (strcmp(value, "END\n") == 0) {
             for (int i = 0; i < numOfFiles; i++) {
                 kill(fileData[i]->pid, SIGKILL);
-                printf("Process %d file %s.\n", fileData[i]->pid, fileData[i]->path);
+                printf("PROCESS: %d || FILE: %s || IS STOPPED:%d\n", fileData[i]->pid, fileData[i]->path,
+                       fileData[i]->stopped);
             }
             free(value);
             exit(1);
