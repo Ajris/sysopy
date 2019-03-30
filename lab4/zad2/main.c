@@ -180,7 +180,7 @@ void monitorEverything(struct fileData **fileData) {
                     printf("Couldn't find that pid\n");
                 }
             } else {
-                printf("You didnt specified pid");
+                printf("You didnt specified pid\n");
             }
         } else if (strncmp(value, "START", 5) == 0) {
             strtok(value, " ");
@@ -199,8 +199,10 @@ void monitorEverything(struct fileData **fileData) {
                     printf("Couldn't find that pid\n");
                 }
             } else {
-                printf("You didnt specified pid");
+                printf("You didnt specified pid\n");
             }
+        } else {
+            printf("Have no idea what to do\n");
         }
         free(value);
     }
