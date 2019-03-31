@@ -2,5 +2,4 @@
 
 cmake .
 make
-./sender 30 &
-./catcher
+./catcher KILL

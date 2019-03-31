@@ -4,7 +4,7 @@
 #include <signal.h>
 #include <string.h>
 
-int signalsReceived = 0;
+static int signalsReceived = 0;
 char *mode;
 
 void printError(char *message);
@@ -16,13 +16,32 @@ void addHandlers();
 void handleEverything(int sig, siginfo_t *info, void *ucontext);
 
 int main(int argc, char **argv) {
+//    printf("Catcher PID: %d", getpid());
+//    if (argc != 2)
+//        printError("Wrong number of arguments");
+//
+//
+//    char* tmp = argv[1];
+//    mode = tmp;
+//    blockSignals();
+//    addHandlers();
+//    printf("Catcher PID: %d", getpid());
+
+    printf("my pid: %d", getpid());
     if (argc != 2)
-        printError("Wrong number of arguments");
-    printf("Catcher PID: %d", getpid());
-    mode = argv[1];
-    blockSignals();
+    {
+        fprintf(stderr, "too few args \n");
+        exit(1);
+    }
+    char *mode1 = argv[1];
+    mode = mode1;
+
     addHandlers();
+    blockSignals();
+    printf("my pid: %d \n", getpid());
     while (1);
+//    return 0;
+//    while (1);
 }
 
 void handleEverything(int sig, siginfo_t *info, void *ucontext) {
@@ -47,7 +66,7 @@ void handleEverything(int sig, siginfo_t *info, void *ucontext) {
             printError("Sth went wrong");
         }
         printf("Catcher got: %d\n", signalsReceived);
-        exit(1);
+        exit(0);
     }
 }
 
