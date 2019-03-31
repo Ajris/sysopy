@@ -5,52 +5,46 @@
 
 int signalsReceived = 0;
 int numOfSignals;
+char* mode;
+int catcherPID;
 
 void printError(char *message);
 
-void blockSignals(char *mode);
+void blockSignals();
 
-void addHandlers(char *mode);
+void addHandlers();
 
 void handleEverything(int sig, siginfo_t *info, void *ucontext);
 
-void sendSignals(char *mode, int numOfSignals, int catcherPID);
+void sendSignals();
 
 int main(int argc, char **argv) {
     if (argc != 4)
         printError("Wrong number of arguments");
 
     numOfSignals = atoi(argv[1]);
-    int catcherPID = atoi(argv[2]);
-    char *mode = argv[3];
+    catcherPID = atoi(argv[2]);
+    mode = argv[3];
 
     if (numOfSignals <= 0)
         printError("Wrong num of signals");
     if (catcherPID <= 0)
         printError("Wrong num of catcherpid");
 
-    blockSignals(mode);
-    sendSignals(mode, numOfSignals, catcherPID);
-    addHandlers(mode);
+    blockSignals();
+    sendSignals();
+    addHandlers();
     while (1);
 }
 
-void killAllWithProcess(int processNum, int signal, int endingSignal){
-    for(int i = 0; i < numOfSignals; i++)
-        kill(processNum, signal);
-    kill(processNum, endingSignal);
-}
-
-void sendSignals(char *mode, int numOfSignals, int catcherPID) {
+void sendSignals() {
     if (strcmp(mode, "KILL") == 0) {
-        killAllWithProcess(catcherPID, SIGUSR1, SIGUSR2);
+        kill(catcherPID, SIGUSR1);
     } else if (strcmp(mode, "SIGQUEUE") == 0) {
         union sigval justToBeHere;
-        for (int i = 0; i < numOfSignals; i++)
-            sigqueue(catcherPID, SIGUSR1, justToBeHere);
-        sigqueue(catcherPID, SIGUSR2, justToBeHere);
+        sigqueue(catcherPID, SIGUSR1, justToBeHere);
     } else if (strcmp(mode, "SIGRT") == 0) {
-        killAllWithProcess(catcherPID, SIGRTMIN, SIGRTMAX);
+        kill(catcherPID, SIGRTMIN);
     } else {
         printError("Wrong mode");
     }
@@ -59,13 +53,36 @@ void sendSignals(char *mode, int numOfSignals, int catcherPID) {
 void handleEverything(int sig, siginfo_t *info, void *ucontext) {
     if (sig == SIGUSR1 || sig == SIGRTMIN) {
         signalsReceived++;
+        if(signalsReceived < numOfSignals){
+            if (strcmp(mode, "KILL") == 0) {
+                kill(catcherPID, SIGUSR1);
+            } else if (strcmp(mode, "SIGQUEUE") == 0) {
+                union sigval justToBeHere;
+                sigqueue(catcherPID, SIGUSR1, justToBeHere);
+            } else if (strcmp(mode, "SIGRT") == 0) {
+                kill(catcherPID, SIGRTMIN);
+            } else {
+                printError("Wrong mode");
+            }
+        } else {
+            if (strcmp(mode, "KILL") == 0) {
+                kill(catcherPID, SIGUSR2);
+            } else if (strcmp(mode, "SIGQUEUE") == 0) {
+                union sigval justToBeHere;
+                sigqueue(catcherPID, SIGUSR2, justToBeHere);
+            } else if (strcmp(mode, "SIGRT") == 0) {
+                kill(catcherPID, SIGRTMAX);
+            } else {
+                printError("Wrong mode");
+            }
+        }
     } else if (sig == SIGUSR2 || sig == SIGRTMAX) {
         printf("Sent: %d Got: %d\n", numOfSignals, signalsReceived);
         exit(1);
     }
 }
 
-void addHandlers(char *mode) {
+void addHandlers() {
     struct sigaction *act = malloc(sizeof(struct sigaction));
     act->sa_flags = SA_SIGINFO;
     act->sa_sigaction = handleEverything;
@@ -90,7 +107,7 @@ void addHandlers(char *mode) {
     }
 }
 
-void blockSignals(char *mode) {
+void blockSignals() {
     sigset_t *allSignalsToBlock = malloc(sizeof(sigset_t));
     sigfillset(allSignalsToBlock);
     if (strcmp(mode, "KILL") == 0) {

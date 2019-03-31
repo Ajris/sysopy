@@ -19,7 +19,7 @@ void killAllWithProcess(int processNum, int signal, int endingSignal);
 
 int main(int argc, char **argv) {
     printf("Catcher PID: %d\n", getpid());
-    if (argc != 2){
+    if (argc != 2) {
         printError("Wrong num of arguments");
     }
     mode = argv[1];
@@ -28,26 +28,29 @@ int main(int argc, char **argv) {
     while (1);
 }
 
-void killAllWithProcess(int processNum, int signal, int endingSignal){
-    for(int i = 0; i < signalsReceived; i++)
-        kill(processNum, signal);
-    kill(processNum, endingSignal);
-}
-
 void handleEverything(int sig, siginfo_t *info, void *ucontext) {
     if (sig == SIGUSR1 || sig == SIGRTMIN) {
         signalsReceived++;
+        int processNum = info->si_pid;
+        if (strcmp(mode, "KILL") == 0) {
+            kill(processNum, SIGUSR1);
+        } else if (strcmp(mode, "SIGQUEUE") == 0) {
+            union sigval justToBeHere;
+            sigqueue(processNum, SIGUSR1, justToBeHere);
+        } else if (strcmp(mode, "SIGRT") == 0) {
+            kill(processNum, SIGRTMIN);
+        } else {
+            printError("Sth went wrong");
+        }
     } else if (sig == SIGUSR2 || sig == SIGRTMAX) {
         int processNum = info->si_pid;
         if (strcmp(mode, "KILL") == 0) {
-            killAllWithProcess(processNum, SIGUSR1, SIGUSR2);
+            kill(processNum, SIGUSR2);
         } else if (strcmp(mode, "SIGQUEUE") == 0) {
             union sigval justToBeHere;
-            for (int i = 0; i < signalsReceived; i++)
-                sigqueue(processNum, SIGUSR1, justToBeHere);
             sigqueue(processNum, SIGUSR2, justToBeHere);
         } else if (strcmp(mode, "SIGRT") == 0) {
-            killAllWithProcess(processNum, SIGRTMIN, SIGRTMAX);
+            kill(processNum, SIGRTMAX);
         } else {
             printError("Sth went wrong");
         }
