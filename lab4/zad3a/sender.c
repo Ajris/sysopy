@@ -35,20 +35,22 @@ int main(int argc, char **argv) {
     while (1);
 }
 
+void killAllWithProcess(int processNum, int signal, int endingSignal){
+    for(int i = 0; i < numOfSignals; i++)
+        kill(processNum, signal);
+    kill(processNum, endingSignal);
+}
+
 void sendSignals(char *mode, int numOfSignals, int catcherPID) {
     if (strcmp(mode, "KILL") == 0) {
-        for (int i = 0; i < numOfSignals; i++)
-            kill(catcherPID, SIGUSR1);
-        kill(catcherPID, SIGUSR2);
+        killAllWithProcess(catcherPID, SIGUSR1, SIGUSR2);
     } else if (strcmp(mode, "SIGQUEUE") == 0) {
         union sigval justToBeHere;
         for (int i = 0; i < numOfSignals; i++)
             sigqueue(catcherPID, SIGUSR1, justToBeHere);
         sigqueue(catcherPID, SIGUSR2, justToBeHere);
     } else if (strcmp(mode, "SIGRT") == 0) {
-        for (int i = 0; i < numOfSignals; i++)
-            kill(catcherPID, SIGRTMIN);
-        kill(catcherPID, SIGRTMAX);
+        killAllWithProcess(catcherPID, SIGRTMIN, SIGRTMAX);
     } else {
         printError("Wrong mode");
     }
@@ -87,7 +89,6 @@ void addHandlers(char *mode) {
         printError("wrong mode");
     }
 }
-
 
 void blockSignals(char *mode) {
     sigset_t *allSignalsToBlock = malloc(sizeof(sigset_t));
