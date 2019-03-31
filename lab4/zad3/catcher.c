@@ -16,29 +16,15 @@ void addHandlers();
 void handleEverything(int sig, siginfo_t *info, void *ucontext);
 
 int main(int argc, char **argv) {
-//    printf("Catcher PID: %d", getpid());
-//    if (argc != 2)
-//        printError("Wrong number of arguments");
-//
-//
-//    char* tmp = argv[1];
-//    mode = tmp;
-//    blockSignals();
-//    addHandlers();
-//    printf("Catcher PID: %d", getpid());
-
-    printf("my pid: %d", getpid());
-    if (argc != 2)
-    {
-        fprintf(stderr, "too few args \n");
-        exit(1);
+    printf("Catcher PID: %d\n", getpid());
+    if (argc != 2){
+        printError("Wrong num of arguments");
     }
     char *mode1 = argv[1];
     mode = mode1;
 
     addHandlers();
     blockSignals();
-    printf("my pid: %d \n", getpid());
     while (1);
 //    return 0;
 //    while (1);
