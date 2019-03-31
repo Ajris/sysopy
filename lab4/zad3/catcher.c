@@ -4,6 +4,7 @@
 void printError(char *message);
 
 int main(int argc, char **argv) {
+
     printf("1");
 }
 
