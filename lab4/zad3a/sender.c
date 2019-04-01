@@ -12,9 +12,15 @@ void blockSignals(char *mode);
 
 void addHandlers(char *mode);
 
-void handleEverything(int sig, siginfo_t *info, void *ucontext);
-
 void sendSignals(char *mode, int numOfSignals, int catcherPID);
+
+void handle_KILL(int sig, siginfo_t *info, void *ucontext);
+
+void handle_SIGQUEUE(int sig, siginfo_t *info, void *ucontext);
+
+void handle_SIGRT(int sig, siginfo_t *info, void *ucontext);
+
+void killAllWithProcess(int processNum, int signal, int endingSignal);
 
 int main(int argc, char **argv) {
     if (argc != 4)
@@ -35,8 +41,8 @@ int main(int argc, char **argv) {
     while (1);
 }
 
-void killAllWithProcess(int processNum, int signal, int endingSignal){
-    for(int i = 0; i < numOfSignals; i++)
+void killAllWithProcess(int processNum, int signal, int endingSignal) {
+    for (int i = 0; i < numOfSignals; i++)
         kill(processNum, signal);
     kill(processNum, endingSignal);
 }
@@ -84,7 +90,7 @@ void handle_SIGRT(int sig, siginfo_t *info, void *ucontext) {
     }
 }
 
-void addHandlers(char* mode) {
+void addHandlers(char *mode) {
     struct sigaction *handlerInfos = malloc(sizeof(struct sigaction));
     handlerInfos->sa_flags = SA_SIGINFO;
     sigemptyset(&handlerInfos->sa_mask);
