@@ -12,6 +12,7 @@
 
 int numOfFiles = 0;
 int isWorking = 1;
+int isEnded = 0;
 
 struct input {
     char *filename;
@@ -88,9 +89,14 @@ void start(int signum) {
     isWorking = 1;
 }
 
+void end(int sig) {
+    isEnded = 1;
+}
+
 void watchFileToMemory(struct fileData *fileData) {
     signal(SIGUSR1, &stop);
     signal(SIGUSR2, &start);
+    signal(SIGRTMIN, &end);
 
     struct stat fileStats;
     if (lstat(fileData->path, &fileStats) == -1) {
@@ -102,10 +108,9 @@ void watchFileToMemory(struct fileData *fileData) {
 
     char *content = getContent(fileData->path);
     while (1) {
-        sleep(1);
+        if (isEnded == 1)
+            break;
         while (isWorking == 1) {
-
-
             if (lstat(fileData->path, &fileStats) == -1) {
                 printf("File: %s", fileData->path);
                 printError("Coudlnt read file");
@@ -133,7 +138,11 @@ void watchFileToMemory(struct fileData *fileData) {
             free(modificationTime);
             free(newFileName);
             sleep(fileData->repeatingTime);
+            if (isEnded == 1)
+                break;
         }
+        if (isWorking == 0)
+            sleep(1);
     }
     free(content);
     exit(fileData->numOfCopies);
@@ -153,9 +162,11 @@ void monitorEverything(struct fileData **fileData) {
         fgets(value, 20, stdin);
         if (strcmp(value, "END\n") == 0) {
             for (int i = 0; i < numOfFiles; i++) {
-                kill(fileData[i]->pid, SIGKILL);
-                printf("PROCESS: %d || FILE: %s || IS STOPPED:%d\n", fileData[i]->pid, fileData[i]->path,
-                       fileData[i]->stopped);
+                int status;
+                kill(fileData[i]->pid, SIGRTMIN);
+                waitpid(fileData[i]->pid, &status, 0);
+                printf("PROCESS: %d || FILE: %s || BACKUPS:%d\n", fileData[i]->pid, fileData[i]->path,
+                       WEXITSTATUS(status));
             }
             free(value);
             exit(1);
@@ -219,11 +230,11 @@ void monitorEverything(struct fileData **fileData) {
     }
 }
 
+
 void createProcesses(struct fileData **fileData) {
     for (int i = 0; i < numOfFiles; i++) {
         pid_t curr = fork();
         if (curr == 0) {
-            fileData[i]->pid = getpid();
             watchFileToMemory(fileData[i]);
         } else {
             fileData[i]->pid = curr;
