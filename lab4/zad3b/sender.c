@@ -81,27 +81,20 @@ void handleEverything(int sig, siginfo_t *info, void *ucontext) {
         exit(1);
     }
 }
-
 void addHandlers() {
-    struct sigaction *act = malloc(sizeof(struct sigaction));
-    act->sa_flags = SA_SIGINFO;
-    act->sa_sigaction = handleEverything;
-    sigemptyset(&act->sa_mask);
+    struct sigaction *handlerInfos = malloc(sizeof(struct sigaction));
+    handlerInfos->sa_flags = SA_SIGINFO;
+    handlerInfos->sa_sigaction = handleEverything;
+    sigemptyset(&handlerInfos->sa_mask);
     if (strcmp(mode, "KILL") == 0) {
-        sigaddset(&act->sa_mask, SIGUSR1);
-        sigaddset(&act->sa_mask, SIGUSR2);
-        sigaction(SIGUSR1, act, NULL);
-        sigaction(SIGUSR2, act, NULL);
+        sigaction(SIGUSR1, handlerInfos, NULL);
+        sigaction(SIGUSR2, handlerInfos, NULL);
     } else if (strcmp(mode, "SIGQUEUE") == 0) {
-        sigaddset(&act->sa_mask, SIGUSR1);
-        sigaddset(&act->sa_mask, SIGUSR2);
-        sigaction(SIGUSR1, act, NULL);
-        sigaction(SIGUSR2, act, NULL);
+        sigaction(SIGUSR1, handlerInfos, NULL);
+        sigaction(SIGUSR2, handlerInfos, NULL);
     } else if (strcmp(mode, "SIGRT") == 0) {
-        sigaddset(&act->sa_mask, SIGRTMIN);
-        sigaddset(&act->sa_mask, SIGRTMAX);
-        sigaction(SIGRTMIN, act, NULL);
-        sigaction(SIGRTMAX, act, NULL);
+        sigaction(SIGRTMIN, handlerInfos, NULL);
+        sigaction(SIGRTMAX, handlerInfos, NULL);
     } else {
         printError("wrong mode");
     }
@@ -124,6 +117,7 @@ void blockSignals() {
     }
     sigprocmask(SIG_BLOCK, allSignalsToBlock, NULL);
 }
+
 
 void printError(char *message) {
     printf("%s", message);

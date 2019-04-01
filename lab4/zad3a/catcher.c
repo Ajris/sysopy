@@ -4,7 +4,7 @@
 #include <signal.h>
 #include <string.h>
 
-static int signalsReceived = 0;
+int signalsReceived = 0;
 char *mode;
 
 void printError(char *message);
