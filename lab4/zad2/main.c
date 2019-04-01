@@ -47,7 +47,6 @@ int main(int argc, char **argv) {
     struct sigaction act;
     act.sa_handler = ctrlC_Handler;
     sigemptyset(&act.sa_mask);
-    act.sa_flags = 0;
     sigaction(SIGINT, &act, NULL);
 
     struct input *input = parseArguments(argv);
