@@ -62,18 +62,12 @@ void addHandlers() {
     handlerInfos->sa_sigaction = handleEverything;
     sigemptyset(&handlerInfos->sa_mask);
     if (strcmp(mode, "KILL") == 0) {
-        sigaddset(&handlerInfos->sa_mask, SIGUSR1);
-        sigaddset(&handlerInfos->sa_mask, SIGUSR2);
         sigaction(SIGUSR1, handlerInfos, NULL);
         sigaction(SIGUSR2, handlerInfos, NULL);
     } else if (strcmp(mode, "SIGQUEUE") == 0) {
-        sigaddset(&handlerInfos->sa_mask, SIGUSR1);
-        sigaddset(&handlerInfos->sa_mask, SIGUSR2);
         sigaction(SIGUSR1, handlerInfos, NULL);
         sigaction(SIGUSR2, handlerInfos, NULL);
     } else if (strcmp(mode, "SIGRT") == 0) {
-        sigaddset(&handlerInfos->sa_mask, SIGRTMIN);
-        sigaddset(&handlerInfos->sa_mask, SIGRTMAX);
         sigaction(SIGRTMIN, handlerInfos, NULL);
         sigaction(SIGRTMAX, handlerInfos, NULL);
     } else {

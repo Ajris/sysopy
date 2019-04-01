@@ -71,18 +71,12 @@ void addHandlers(char *mode) {
     act->sa_sigaction = handleEverything;
     sigemptyset(&act->sa_mask);
     if (strcmp(mode, "KILL") == 0) {
-        sigaddset(&act->sa_mask, SIGUSR1);
-        sigaddset(&act->sa_mask, SIGUSR2);
         sigaction(SIGUSR1, act, NULL);
         sigaction(SIGUSR2, act, NULL);
     } else if (strcmp(mode, "SIGQUEUE") == 0) {
-        sigaddset(&act->sa_mask, SIGUSR1);
-        sigaddset(&act->sa_mask, SIGUSR2);
         sigaction(SIGUSR1, act, NULL);
         sigaction(SIGUSR2, act, NULL);
     } else if (strcmp(mode, "SIGRT") == 0) {
-        sigaddset(&act->sa_mask, SIGRTMIN);
-        sigaddset(&act->sa_mask, SIGRTMAX);
         sigaction(SIGRTMIN, act, NULL);
         sigaction(SIGRTMAX, act, NULL);
     } else {
