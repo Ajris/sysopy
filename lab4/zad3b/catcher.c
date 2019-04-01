@@ -13,9 +13,11 @@ void blockSignals();
 
 void addHandlers();
 
-void handleEverything(int sig, siginfo_t *info, void *ucontext);
+void handle_KILL(int sig, siginfo_t *info, void *ucontext);
 
-void killAllWithProcess(int processNum, int signal, int endingSignal);
+void handle_SIGQUEUE(int sig, siginfo_t *info, void *ucontext);
+
+void handle_SIGRT(int sig, siginfo_t *info, void *ucontext);
 
 int main(int argc, char **argv) {
     printf("Catcher PID: %d\n", getpid());
@@ -28,32 +30,36 @@ int main(int argc, char **argv) {
     while (1);
 }
 
-void handleEverything(int sig, siginfo_t *info, void *ucontext) {
-    if (sig == SIGUSR1 || sig == SIGRTMIN) {
+void handle_KILL(int sig, siginfo_t *info, void *ucontext){
+    if(sig == SIGUSR1){
         signalsReceived++;
-        int processNum = info->si_pid;
-        if (strcmp(mode, "KILL") == 0) {
-            kill(processNum, SIGUSR1);
-        } else if (strcmp(mode, "SIGQUEUE") == 0) {
-            union sigval justToBeHere;
-            sigqueue(processNum, SIGUSR1, justToBeHere);
-        } else if (strcmp(mode, "SIGRT") == 0) {
-            kill(processNum, SIGRTMIN);
-        } else {
-            printError("Sth went wrong");
-        }
-    } else if (sig == SIGUSR2 || sig == SIGRTMAX) {
-        int processNum = info->si_pid;
-        if (strcmp(mode, "KILL") == 0) {
-            kill(processNum, SIGUSR2);
-        } else if (strcmp(mode, "SIGQUEUE") == 0) {
-            union sigval justToBeHere;
-            sigqueue(processNum, SIGUSR2, justToBeHere);
-        } else if (strcmp(mode, "SIGRT") == 0) {
-            kill(processNum, SIGRTMAX);
-        } else {
-            printError("Sth went wrong");
-        }
+        kill(info->si_pid, SIGUSR1);
+    } else {
+        kill(info->si_pid, SIGUSR2);
+        printf("Catcher got: %d\n", signalsReceived);
+        exit(0);
+    }
+}
+
+void handle_SIGQUEUE(int sig, siginfo_t *info, void *ucontext){
+    if(sig == SIGUSR1){
+        signalsReceived++;
+        union sigval justToBeHere;
+        sigqueue(info->si_pid, SIGUSR1, justToBeHere);
+    } else {
+        union sigval justToBeHere;
+        sigqueue(info->si_pid, SIGUSR2, justToBeHere);
+        printf("Catcher got: %d\n", signalsReceived);
+        exit(0);
+    }
+}
+
+void handle_SIGRT(int sig, siginfo_t *info, void *ucontext){
+    if(sig == SIGRTMIN){
+        signalsReceived++;
+        kill(info->si_pid, SIGRTMIN);
+    } else {
+        kill(info->si_pid, SIGRTMAX);
         printf("Catcher got: %d\n", signalsReceived);
         exit(0);
     }
@@ -62,15 +68,17 @@ void handleEverything(int sig, siginfo_t *info, void *ucontext) {
 void addHandlers() {
     struct sigaction *handlerInfos = malloc(sizeof(struct sigaction));
     handlerInfos->sa_flags = SA_SIGINFO;
-    handlerInfos->sa_sigaction = handleEverything;
     sigemptyset(&handlerInfos->sa_mask);
     if (strcmp(mode, "KILL") == 0) {
+        handlerInfos->sa_sigaction = handle_KILL;
         sigaction(SIGUSR1, handlerInfos, NULL);
         sigaction(SIGUSR2, handlerInfos, NULL);
     } else if (strcmp(mode, "SIGQUEUE") == 0) {
+        handlerInfos->sa_sigaction = handle_SIGQUEUE;
         sigaction(SIGUSR1, handlerInfos, NULL);
         sigaction(SIGUSR2, handlerInfos, NULL);
     } else if (strcmp(mode, "SIGRT") == 0) {
+        handlerInfos->sa_sigaction = handle_SIGRT;
         sigaction(SIGRTMIN, handlerInfos, NULL);
         sigaction(SIGRTMAX, handlerInfos, NULL);
     } else {
