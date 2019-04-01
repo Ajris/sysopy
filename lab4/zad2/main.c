@@ -13,6 +13,7 @@
 int numOfFiles = 0;
 int isWorking = 1;
 int isEnded = 0;
+int justToWorkPlsDontDoIt = 0;
 
 struct input {
     char *filename;
@@ -28,6 +29,8 @@ struct fileData {
 
 struct fileData **fileData;
 
+void ctrlC_Handler(int signum);
+
 void printError(char *message);
 
 struct input *parseArguments(char **argv);
@@ -40,6 +43,13 @@ int main(int argc, char **argv) {
     if (argc != 2) {
         printError("Wrong number of arguments");
     }
+
+    struct sigaction act;
+    act.sa_handler = ctrlC_Handler;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = 0;
+    sigaction(SIGINT, &act, NULL);
+
     struct input *input = parseArguments(argv);
     fileData = readFromFile(input->filename);
     createProcesses(fileData);
@@ -50,7 +60,6 @@ int main(int argc, char **argv) {
     free(fileData);
     free(input);
 }
-
 
 char *getContent(char *filename) {
     struct stat fileinfo;
@@ -91,6 +100,11 @@ void start(int signum) {
 
 void end(int sig) {
     isEnded = 1;
+}
+
+void ctrlC_Handler(int signum) {
+    if (signum == SIGINT)
+        justToWorkPlsDontDoIt = 1;
 }
 
 void watchFileToMemory(struct fileData *fileData) {
@@ -148,19 +162,12 @@ void watchFileToMemory(struct fileData *fileData) {
     exit(fileData->numOfCopies);
 }
 
-void ctrlC_Handler(int signum) {
-    for (int i = 0; i < numOfFiles; i++) {
-        printf("PROCESS: %d || FILE: %s || IS STOPPED:%d\n", fileData[i]->pid, fileData[i]->path,
-               fileData[i]->stopped);
-    }
-}
 
 void monitorEverything(struct fileData **fileData) {
-    signal(SIGINT, ctrlC_Handler);
     while (1) {
         char *value = malloc(sizeof(char) * 64);
         fgets(value, 20, stdin);
-        if (strcmp(value, "END\n") == 0) {
+        if (strcmp(value, "END\n") == 0 || justToWorkPlsDontDoIt == 1) {
             for (int i = 0; i < numOfFiles; i++) {
                 int status;
                 kill(fileData[i]->pid, SIGRTMIN);
