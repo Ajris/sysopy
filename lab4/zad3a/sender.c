@@ -56,29 +56,50 @@ void sendSignals(char *mode, int numOfSignals, int catcherPID) {
     }
 }
 
-void handleEverything(int sig, siginfo_t *info, void *ucontext) {
-    if (sig == SIGUSR1 || sig == SIGRTMIN) {
+void handle_KILL(int sig, siginfo_t *info, void *ucontext) {
+    if (sig == SIGUSR1) {
         signalsReceived++;
-    } else if (sig == SIGUSR2 || sig == SIGRTMAX) {
-        printf("Sent: %d Got: %d\n", numOfSignals, signalsReceived);
+    } else {
+        printf("Sender got: %d\n", signalsReceived);
         exit(1);
     }
 }
 
-void addHandlers(char *mode) {
-    struct sigaction *act = malloc(sizeof(struct sigaction));
-    act->sa_flags = SA_SIGINFO;
-    act->sa_sigaction = handleEverything;
-    sigemptyset(&act->sa_mask);
+void handle_SIGQUEUE(int sig, siginfo_t *info, void *ucontext) {
+    if (sig == SIGUSR1) {
+        printf("This is: %d\n", info->si_value.sival_int);
+        signalsReceived++;
+    } else {
+        printf("Sender got: %d\n", signalsReceived);
+        exit(1);
+    }
+}
+
+void handle_SIGRT(int sig, siginfo_t *info, void *ucontext) {
+    if (sig == SIGRTMIN) {
+        signalsReceived++;
+    } else {
+        printf("Sender got: %d\n", signalsReceived);
+        exit(1);
+    }
+}
+
+void addHandlers(char* mode) {
+    struct sigaction *handlerInfos = malloc(sizeof(struct sigaction));
+    handlerInfos->sa_flags = SA_SIGINFO;
+    sigemptyset(&handlerInfos->sa_mask);
     if (strcmp(mode, "KILL") == 0) {
-        sigaction(SIGUSR1, act, NULL);
-        sigaction(SIGUSR2, act, NULL);
+        handlerInfos->sa_sigaction = handle_KILL;
+        sigaction(SIGUSR1, handlerInfos, NULL);
+        sigaction(SIGUSR2, handlerInfos, NULL);
     } else if (strcmp(mode, "SIGQUEUE") == 0) {
-        sigaction(SIGUSR1, act, NULL);
-        sigaction(SIGUSR2, act, NULL);
+        handlerInfos->sa_sigaction = handle_SIGQUEUE;
+        sigaction(SIGUSR1, handlerInfos, NULL);
+        sigaction(SIGUSR2, handlerInfos, NULL);
     } else if (strcmp(mode, "SIGRT") == 0) {
-        sigaction(SIGRTMIN, act, NULL);
-        sigaction(SIGRTMAX, act, NULL);
+        handlerInfos->sa_sigaction = handle_SIGRT;
+        sigaction(SIGRTMIN, handlerInfos, NULL);
+        sigaction(SIGRTMAX, handlerInfos, NULL);
     } else {
         printError("wrong mode");
     }
