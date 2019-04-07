@@ -1,0 +1,4 @@
+ls -al | cat | grep ^l | wc -l
+ls -a -l | cat
+ls -a | grep ^z
+ps | grep 2
