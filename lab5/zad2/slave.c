@@ -17,30 +17,28 @@ int main(int argc, char **argv) {
     if (argc != 3)
         printError("Wrong num of arguments");
 
-    char date_res[MAX_LINE];
-    char pipe_string[MAX_LINE];
+    char *fileName = argv[1];
+    char *dateRes = malloc(MAX_LINE * sizeof(char));
+    char *wholeString = malloc(MAX_LINE * sizeof(char));
 
     int count = atoi(argv[2]);
 
     printf("PID: %d\n", getpid());
 
-    int pipe = open(argv[1], O_WRONLY);
-    if	(pipe < 0)
+    int pipe = open(fileName, O_WRONLY);
+    if (pipe < 0)
         printError("Something went wrong");
 
     for (int i = 0; i < count; i++) {
         FILE *date = popen("date", "r");
-        fgets(date_res, MAX_LINE, date);
-
-        if (sprintf(pipe_string, "%d @ %s", (int) getpid(), date_res) < 0)
-            printError("Could not write to string");
-
-        if (write(pipe, pipe_string, strlen(pipe_string)) < 0)
-            printError("Something went wrong");
-
+        fgets(dateRes, MAX_LINE, date);
+        sprintf(wholeString, "PID: %d || DATE: %s", getpid(), dateRes);
+        write(pipe, wholeString, strlen(wholeString));
         sleep(rand() % 4 + 2);
     }
 
+    free(wholeString);
+    free(dateRes);
     close(pipe);
     return 0;
 }

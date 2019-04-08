@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <memory.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 
 #define MAX_LINE 100
 
@@ -17,7 +18,7 @@ int main(int argc, char **argv) {
     char* fileName = argv[1];
     char* line = malloc(MAX_LINE * sizeof(char));
 
-    mkfifo(fileName, S_IWUSR | S_IRUSR);
+    mkfifo(fileName, O_RDWR);
     FILE *file = fopen(fileName, "r");
     if (!file)
         printError("Couldnt open file");
