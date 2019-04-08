@@ -4,4 +4,5 @@ project(lab5-zad2 C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall ")
 
-add_executable(main main.c)
+add_executable(slave slave.c)
+add_executable(master master.c)
