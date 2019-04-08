@@ -12,6 +12,10 @@
 
 int numOfLines = 0;
 
+char** getCommandElements(char *line);
+
+int getNumberOfTokens(char* string, char* tokens);
+
 char ** readFromFile(char* fileName);
 
 void printError(char *message);
