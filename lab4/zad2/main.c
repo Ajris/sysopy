@@ -35,7 +35,7 @@ void printError(char *message);
 
 struct input *parseArguments(char **argv);
 
-struct fileData **readFromFile(char *filename);
+struct fileData **readLinesFromFile(char *filename);
 
 void createProcesses(struct fileData **fileData);
 
@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
     sigaction(SIGINT, &act, NULL);
 
     struct input *input = parseArguments(argv);
-    fileData = readFromFile(input->filename);
+    fileData = readLinesFromFile(input->filename);
     createProcesses(fileData);
 
     for (int i = 0; i < MAX_FILE_NUM; i++) {
@@ -249,8 +249,8 @@ void createProcesses(struct fileData **fileData) {
     monitorEverything(fileData);
 }
 
-struct fileData **readFromFile(char *filename) {
-    FILE *file = fopen(filename, "r");
+struct fileData **readLinesFromFile(char *filename) {
+    FILE *file = fopen(fileName, "r");
     struct fileData **fileData = malloc(sizeof(struct fileData *) * MAX_FILE_NUM);
     for (int i = 0; i < MAX_FILE_NUM; i++) {
         fileData[i] = malloc(sizeof(struct fileData) + 2 * sizeof(int) + sizeof(char) * MAX_FILELINE);

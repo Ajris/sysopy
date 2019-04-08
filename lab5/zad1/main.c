@@ -6,33 +6,32 @@
 #include <sys/wait.h>
 #include <string.h>
 
-#define MAX_PARAMS 10
-#define MAX_COMMANDS 10
+#define MAX_COMMANDS 20
 #define MAX_LINE_LENGTH 200
 
 int numOfLines = 0;
 
-char** getCommandElements(char *line);
+char **getCommandElements(char *line);
 
-int getNumberOfTokens(char* string, char* tokens);
+int getNumberOfTokens(char *string, char *tokens);
 
-char ** readFromFile(char* fileName);
+char **readLinesFromFile(char *fileName);
 
 void printError(char *message);
 
-void execLine(char* line);
+void execLine(char *line);
 
 int main(int argc, char **argv) {
     if (argc != 2)
         printError("Wrong number of parameters");
 
-    char** lines = readFromFile(argv[1]);
+    char **lines = readLinesFromFile(argv[1]);
 
-    for(int i = 0; i < numOfLines; i++)
+    for (int i = 0; i < numOfLines; i++)
         execLine(lines[i]);
 }
 
-char** readFromFile(char* fileName){
+char **readLinesFromFile(char *fileName) {
     FILE *file = fopen(fileName, "r");
     if (file == NULL)
         printError("Couldn't open file");
@@ -52,13 +51,13 @@ char** readFromFile(char* fileName){
     return lines;
 }
 
-int getNumberOfTokens(char* string, char* tokens) {
+int getNumberOfTokens(char *string, char *tokens) {
     int noOfTokens = 1;
-    char* stringCpy = calloc(strlen(string), sizeof(char));
+    char *stringCpy = calloc(strlen(string), sizeof(char));
     strcpy(stringCpy, string);
 
     strtok(stringCpy, tokens);
-    while(strtok(NULL, tokens)) {
+    while (strtok(NULL, tokens)) {
         noOfTokens++;
     }
 
@@ -67,14 +66,14 @@ int getNumberOfTokens(char* string, char* tokens) {
     return noOfTokens;
 }
 
-char** getCommandElements(char *line){
-    char tokens[3] = {' ','\n','\t'};
+char **getCommandElements(char *line) {
+    char tokens[3] = {' ', '\n', '\t'};
     int noOfArguments = getNumberOfTokens(line, tokens);
 
-    char** arguments = calloc(noOfArguments+1, sizeof(char*));
+    char **arguments = calloc(noOfArguments + 1, sizeof(char *));
     arguments[0] = strtok(line, tokens);
 
-    for(int i=1; i<noOfArguments; ++i) {
+    for (int i = 1; i < noOfArguments; ++i) {
         arguments[i] = strtok(NULL, tokens);
     }
 
@@ -83,41 +82,46 @@ char** getCommandElements(char *line){
     return arguments;
 }
 
-void execLine(char* line) {
+int getCommandsNumber(char* line){
     int commandsNumber = 1;
-    int pipes[2][2];
-    char *commands[MAX_COMMANDS];
+    char *lineCpy = malloc(strlen(line) * sizeof(char));
 
-    char* lineCpy = calloc(strlen(line), sizeof(char));
     strcpy(lineCpy, line);
 
     strtok(lineCpy, "|");
-    while(strtok(NULL, "|")) {
+    while (strtok(NULL, "|")) {
         commandsNumber++;
     }
 
     free(lineCpy);
+    return commandsNumber;
+}
+
+void execLine(char *line) {
+    int commandsNumber = getCommandsNumber(line);
+    int pipes[2][2];
+    char *commands[MAX_COMMANDS];
 
     commands[0] = strtok(line, "|");
-    for(int i=1; i<commandsNumber; ++i) {
+    for (int i = 1; i < commandsNumber; ++i) {
         commands[i] = strtok(NULL, "|");
     }
 
-    for (int i=0; i<commandsNumber; ++i) {
-        if (i>0) {
+    for (int i = 0; i < commandsNumber; ++i) {
+        if (i > 0) {
             close(pipes[i % 2][0]);
             close(pipes[i % 2][1]);
         }
 
-        if(pipe(pipes[i % 2]) == -1) {
+        if (pipe(pipes[i % 2]) == -1) {
             printf("Błąd potoku\n");
             exit(-1);
         }
 
         if (fork() == 0) {
-            char** commandElements = getCommandElements(commands[i]);
+            char **commandElements = getCommandElements(commands[i]);
 
-            if (i != commandsNumber-1) {
+            if (i != commandsNumber - 1) {
                 close(pipes[i % 2][0]);
                 if (dup2(pipes[i % 2][1], STDOUT_FILENO) < 0) {
                     exit(-1);
@@ -139,7 +143,7 @@ void execLine(char* line) {
     close(pipes[commandsNumber % 2][1]);
     close(pipes[(commandsNumber + 1) % 2][0]);
     close(pipes[(commandsNumber + 1) % 2][1]);
-    for(int i=0; i<commandsNumber; ++i) {
+    for (int i = 0; i < commandsNumber; ++i) {
         wait(NULL);
     }
 }

@@ -28,7 +28,7 @@ void printError(char *message);
 
 struct input *parseArguments(char **argv);
 
-struct fileData **readFromFile(char *filename);
+struct fileData **readLinesFromFile(char *filename);
 
 void createProcesses(struct fileData **fileData, struct input *input);
 
@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
         printError("Wrong number of arguments");
     }
     struct input *input = parseArguments(argv);
-    struct fileData **fileData = readFromFile(input->filename);
+    struct fileData **fileData = readLinesFromFile(input->filename);
     createProcesses(fileData, input);
 
     for (int i = 0; i < MAX_FILE_NUM; i++) {
@@ -197,8 +197,8 @@ void createProcesses(struct fileData **fileData, struct input *input) {
     free(tmp);
 }
 
-struct fileData **readFromFile(char *filename) {
-    FILE *file = fopen(filename, "r");
+struct fileData **readLinesFromFile(char *filename) {
+    FILE *file = fopen(fileName, "r");
     struct fileData **fileData = malloc(sizeof(struct fileData *) * MAX_FILE_NUM);
     for (int i = 0; i < MAX_FILE_NUM; i++) {
         fileData[i] = malloc(sizeof(struct fileData) + sizeof(char) * MAX_FILELINE);
