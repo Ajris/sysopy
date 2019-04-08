@@ -42,7 +42,9 @@ char **readLinesFromFile(char *fileName) {
 
     while (fgets(currentLine, MAX_LINE_LENGTH, file) != NULL) {
         char *token = strtok(currentLine, "\n");
-        lines[numOfLines] = strdup(token);
+        char *line = malloc(MAX_LINE_LENGTH * sizeof(char));
+        strcpy(line, token);
+        lines[numOfLines] = line;
         numOfLines++;
         if (numOfLines > MAX_COMMANDS)
             printError("Too many commands");
@@ -73,7 +75,7 @@ char **getCommandElements(char *line) {
     char **arguments = calloc(noOfArguments + 1, sizeof(char *));
     arguments[0] = strtok(line, tokens);
 
-    for (int i = 1; i < noOfArguments; ++i) {
+    for (int i = 1; i < noOfArguments; i++) {
         arguments[i] = strtok(NULL, tokens);
     }
 
@@ -82,7 +84,7 @@ char **getCommandElements(char *line) {
     return arguments;
 }
 
-int getCommandsNumber(char* line){
+int getCommandsNumber(char *line) {
     int commandsNumber = 1;
     char *lineCpy = malloc(strlen(line) * sizeof(char));
 
@@ -97,6 +99,36 @@ int getCommandsNumber(char* line){
     return commandsNumber;
 }
 
+void closeEverything(int pipes[][2]) {
+    close(pipes[0][0]);
+    close(pipes[0][1]);
+    close(pipes[1][0]);
+    close(pipes[1][1]);
+}
+
+void waitForAll(int commandsNumber) {
+    for (int i = 0; i < commandsNumber; ++i) {
+        wait(NULL);
+    }
+}
+
+void ifNotFirstOne(int i, int pipes[][2]){
+    if (i != 0) {
+        close(pipes[(i + 1) % 2][1]);
+        if (dup2(pipes[(i + 1) % 2][0], STDIN_FILENO) < 0) {
+            printError("Error with dup2");
+        }
+    }
+}
+void ifNotLastOne(int i, int pipes[][2], int commandsNumber){
+    if (i != commandsNumber - 1) {
+        close(pipes[i % 2][0]);
+        if (dup2(pipes[i % 2][1], STDOUT_FILENO) < 0) {
+            printError("Error with dup2");
+        }
+    }
+}
+
 void execLine(char *line) {
     int commandsNumber = getCommandsNumber(line);
     int pipes[2][2];
@@ -107,45 +139,28 @@ void execLine(char *line) {
         commands[i] = strtok(NULL, "|");
     }
 
-    for (int i = 0; i < commandsNumber; ++i) {
+    for (int i = 0; i < commandsNumber; i++) {
         if (i > 0) {
             close(pipes[i % 2][0]);
             close(pipes[i % 2][1]);
         }
 
         if (pipe(pipes[i % 2]) == -1) {
-            printf("Błąd potoku\n");
-            exit(-1);
+            printError("Error with pipe");
         }
 
         if (fork() == 0) {
             char **commandElements = getCommandElements(commands[i]);
-
-            if (i != commandsNumber - 1) {
-                close(pipes[i % 2][0]);
-                if (dup2(pipes[i % 2][1], STDOUT_FILENO) < 0) {
-                    exit(-1);
-                }
-            }
-            if (i != 0) {
-                close(pipes[(i + 1) % 2][1]);
-                if (dup2(pipes[(i + 1) % 2][0], STDIN_FILENO) < 0) {
-                    close(-1);
-                }
-            }
+            ifNotLastOne(i, pipes, commandsNumber);
+            ifNotFirstOne(i, pipes);
             execvp(commandElements[0], commandElements);
             free(commandElements);
 
             exit(0);
         }
     }
-    close(pipes[commandsNumber % 2][0]);
-    close(pipes[commandsNumber % 2][1]);
-    close(pipes[(commandsNumber + 1) % 2][0]);
-    close(pipes[(commandsNumber + 1) % 2][1]);
-    for (int i = 0; i < commandsNumber; ++i) {
-        wait(NULL);
-    }
+    closeEverything(pipes);
+    waitForAll(commandsNumber);
 }
 
 void printError(char *message) {
