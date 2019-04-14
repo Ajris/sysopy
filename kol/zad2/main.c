@@ -13,18 +13,24 @@ int main() {
         exit(EXIT_FAILURE);
     }
     if (child == 0) {
-        sleep(100);
+        child = getpid();
+        sleep(15);
         exit(EXIT_SUCCESS);
     } else {
-    /* Proces macierzysty pobiera status  zakończenie potomka child,
-     * nie zawieszając swojej pracy. Jeśli proces się nie zakończył, wysyła do dziecka sygnał SIGKILL.
-     * Jeśli wysłanie sygnału się nie powiodło, ponownie oczekuje na zakończenie procesu child,
-     * tym razem zawieszając pracę do czasu zakończenia sygnału
-     * jeśli się powiodło, wypisuje komunikat sukcesu zakończenia procesu potomka z numerem jego PID i statusem zakończenia. */
-
-
-
-    /* koniec*/
-    } //else
+        /* Proces macierzysty pobiera status  zakończenie potomka child,
+         * nie zawieszając swojej pracy. Jeśli proces się nie zakończył, wysyła do dziecka sygnał SIGKILL.
+         * Jeśli wysłanie sygnału się nie powiodło, ponownie oczekuje na zakończenie procesu child,
+         * tym razem zawieszając pracę do czasu zakończenia sygnału
+         * jeśli się powiodło, wypisuje komunikat sukcesu zakończenia procesu potomka z numerem jego PID i statusem zakończenia. */
+        if(waitpid(child, &status, 0) < 0){
+            if(kill(child, SIGKILL) < 0){
+                pause();
+            } else {
+                retval = WEXITSTATUS(status);
+                printf("SUCCESS ====>  child pid: %d, %d",child,retval);
+            }
+        }
+        /* koniec*/
+    }
     exit(EXIT_SUCCESS);
 }
