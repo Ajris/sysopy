@@ -24,33 +24,33 @@ int main(int argc, char *argv[]) {
 
     if ((child = fork()) == 0) {
         close(toChildFD[1]);
-        char* buffer = malloc(sizeof(char) * 100);
-        read(toChildFD[0], buffer, 99);
-        val2 = atoi(buffer);
+        char* readingBuffer = malloc(sizeof(char) * 100);
+        read(toChildFD[0], readingBuffer, 99);
+        val2 = atoi(readingBuffer);
         //odczytaj z potoku nienazwanego wartosc przekazana przez proces macierzysty i zapisz w zmiennej val2
 
         val2 = val2 * val2;
-        char* buff = malloc(sizeof(char) * 100);
-        sprintf(buff, "%d", val2);
-        printf("%s\n", buff);
-        //wyslij potokiem nienazwanym val2 do procesu macierzysego
-        dup2(toChildFD[1], STDOUT_FILENO);
-        write(toChildFD[1], buff, 99);
-
-    } else {
+        char* writingBuffer = malloc(sizeof(char) * 100);
+        sprintf(writingBuffer, "%d", val2);
         close(toParentFD[0]);
+        //wyslij potokiem nienazwanym val2 do procesu macierzysego
+        write(toParentFD[1], writingBuffer, 99);
+        close(toChildFD[0]);
+        close(toParentFD[1]);
+    } else {
+        close(toChildFD[0]);
         val1 = atoi(argv[1]);
-        dup2(toParentFD[1], STDOUT_FILENO);
-        write(toParentFD[1], argv[1], 10);
+        write(toChildFD[1], argv[1], 10);
         //wyslij val1 potokiem nienazwanym do priocesu potomnego
 
         sleep(1);
-
+        close(toParentFD[1]);
         char* buffer = malloc(100 * sizeof(char));
         read(toChildFD[0], buffer, 99);
         val3 = atoi(buffer);
+        close(toChildFD[1]);
+        close(toParentFD[0]);
         //odczytaj z potoku nienazwanego wartosc przekazana przez proces potomny i zapisz w zmiennej val3
-
         printf("%d square is: %d\n", val1, val3);
     }
     return 0;
