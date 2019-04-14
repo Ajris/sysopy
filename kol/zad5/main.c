@@ -44,7 +44,6 @@ int main(int argc, char *argv[]) {
         close(toParentFD[1]);
     } else {
         close(toChildFD[0]);
-        val1 = atoi(argv[1]);
         write(toChildFD[1], argv[1], 10);
         //wyslij val1 potokiem nienazwanym do priocesu potomnego
 
@@ -56,7 +55,7 @@ int main(int argc, char *argv[]) {
         close(toChildFD[1]);
         close(toParentFD[0]);
         //odczytaj z potoku nienazwanego wartosc przekazana przez proces potomny i zapisz w zmiennej val3
-        printf("%d square is: %d\n", val1, val3);
+        printf("Square is: %d\n", val3);
     }
     return 0;
 }
