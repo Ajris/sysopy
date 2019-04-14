@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
         sleep(1);
         close(toParentFD[1]);
         char* buffer = malloc(100 * sizeof(char));
-        read(toChildFD[0], buffer, 99);
+        read(toParentFD[0], buffer, 99);
         val3 = atoi(buffer);
         close(toChildFD[1]);
         close(toParentFD[0]);
