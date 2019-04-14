@@ -13,11 +13,11 @@ int main(int argc, char *argv[]) {
             printf("lstat error");
             continue;
         }
-        if (S_ISREG(buf.st_mode) == 0)
+        if (S_ISREG(buf.st_mode))
             tekst = "zwykly plik";
-        else if (S_ISDIR(buf.st_mode) == 0)
+        else if (S_ISDIR(buf.st_mode))
             tekst = "katalog";
-        else if (S_ISLNK(buf.st_mode) == 0)
+        else if (S_ISLNK(buf.st_mode))
             tekst = "link symboliczny";
         else
             tekst = "**** cos innego !!! ****";
