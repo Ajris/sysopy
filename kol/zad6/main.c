@@ -17,6 +17,7 @@ int main(int argc, char *argv[]) {
                 exit(1);
             } else if(pid == 0){
                 printf("I am %d PID %d PARENTPID %d\n", i,getpid(), getppid());
+                sleep(10);
                 exit(0);
             }
             //*********************************************************
