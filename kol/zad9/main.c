@@ -1,38 +1,27 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <wait.h>
+#include <sys/stat.h>
 
 int main(int argc, char *argv[]) {
-    int i, pid;
+    int i;
+    struct stat buf;
+    char *tekst;
 
-    if (argc != 2) {
-        printf("Not a suitable number of program arguments");
-        exit(2);
-    } else {
-        for (i = 0; i < atoi(argv[1]); i++) {
-            pid = fork();
-            if(pid < 0){
-                fprintf(stderr, "ERROR");
-                exit(1);
-            } else if(pid == 0){
-                printf("I am %d PID %d PARENTPID %d\n", i,getpid(), getppid());
-                sleep(10);
-                exit(0);
-            }
-            //*********************************************************
-            //Uzupelnij petle w taki sposob aby stworzyc dokladnie argv[1] procesow potomnych, bedacych dziecmi
-            //   tego samego procesu macierzystego.
-            // Kazdy proces potomny powinien:
-            // - "powiedziec ktorym jest dzieckiem",
-            //-  jaki ma pid,
-            //- kto jest jego rodzicem
-            //******************************************************
+    for (i = 1; i < argc; i++) {
+        printf("%s: ", argv[i]);
+        if (lstat(argv[i], &buf) < 0) {
+            printf("lstat error");
+            continue;
         }
-
-        for(int i = 0; i < atoi(argv[1]); i++){
-            wait(NULL);
-        }
+        if (S_ISREG(buf.st_mode) == 0)
+            tekst = "zwykly plik";
+        else if (S_ISDIR(buf.st_mode) == 0)
+            tekst = "katalog";
+        else if (S_ISLNK(buf.st_mode) == 0)
+            tekst = "link symboliczny";
+        else
+            tekst = "**** cos innego !!! ****";
+        printf("%s\n", tekst);
     }
-    return 0;
+    exit(0);
 }
