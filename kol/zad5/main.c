@@ -26,7 +26,12 @@ int main(int argc, char *argv[]) {
         close(toChildFD[1]);
         char* readingBuffer = malloc(sizeof(char) * 100);
         read(toChildFD[0], readingBuffer, 99);
-        val2 = atoi(readingBuffer);
+        char* error;
+        val2 = strtol(readingBuffer, &error, 10);
+        if(strcmp(error, "") != 0){
+            printf("SOMETHING WENT WRONG\n");
+            exit(1);
+        }
         //odczytaj z potoku nienazwanego wartosc przekazana przez proces macierzysty i zapisz w zmiennej val2
 
         val2 = val2 * val2;
@@ -45,9 +50,9 @@ int main(int argc, char *argv[]) {
 
         sleep(1);
         close(toParentFD[1]);
-        char* buffer = malloc(100 * sizeof(char));
-        read(toParentFD[0], buffer, 99);
-        val3 = atoi(buffer);
+        char* readingBuffer = malloc(100 * sizeof(char));
+        read(toParentFD[0], readingBuffer, 99);
+        val3 = atoi(readingBuffer);
         close(toChildFD[1]);
         close(toParentFD[0]);
         //odczytaj z potoku nienazwanego wartosc przekazana przez proces potomny i zapisz w zmiennej val3
