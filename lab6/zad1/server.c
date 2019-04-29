@@ -108,6 +108,8 @@ void printError(char* message) {
 }
 
 void handleInit(Message message) {
+    if(lastClientNumber >= MAX_CLIENTS)
+        printError("TOO MANY CLIENTS");
     if ((clientsQueueID[lastClientNumber] = msgget(message.value, 0)) == -1)
         printError("Coudlnt get clients queue");
     sendToClient(clientsQueueID[lastClientNumber], INIT, lastClientNumber, 0);
