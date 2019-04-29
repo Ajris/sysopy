@@ -257,10 +257,10 @@ void handleReceived(Message message) {
         case FRIENDS:
             handleFriends(message);
             break;
-        case ADD_FRIENDS:
+        case ADD:
             handleAddFriends(message);
             break;
-        case DEL_FRIENDS:
+        case DEL:
             handleDelFriends(message);
             break;
         case TO_FRIENDS:

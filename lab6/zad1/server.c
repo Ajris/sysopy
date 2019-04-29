@@ -55,6 +55,9 @@ size_t updateTextWithTime(Message message);
 
 int main() {
     text = malloc(MAX_MESSAGE_LEN);
+    for(int i = 0; i < MAX_CLIENTS; i++){
+        friendsNum[i] = -1;
+    }
     signal(SIGINT, handleCtrlC);
     if ((serverQueueID = msgget(ftok(getenv("HOME"), 0), IPC_CREAT | 0666)) == -1)
         printError("Coudlnt get server");
@@ -241,10 +244,10 @@ void handleReceived(Message message) {
         case FRIENDS:
             handleFriends(message);
             break;
-        case ADD_FRIENDS:
+        case ADD:
             handleAddFriends(message);
             break;
-        case DEL_FRIENDS:
+        case DEL:
             handleDelFriends(message);
             break;
         case TO_FRIENDS:

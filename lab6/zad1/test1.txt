@@ -1,0 +1,4 @@
+FRIENDS 0
+2FRIENDS message 3 - to all
+2FRIENDS message 23 - to all
+2ONE 0 dupa

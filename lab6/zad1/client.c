@@ -90,8 +90,7 @@ int main(int argc, char **argv) {
                 fread(input, sizeof(char), MAX_FILE_SIZE, fd);
                 comm = strtok(input, "\n");
                 while (comm != NULL) {
-                    comm[strlen(comm)] = '\n';
-                    handleInput(comm, strlen(comm) + 1);
+                    handleInput(comm, strlen(comm));
                     comm = strtok(NULL, "\n");
                 }
             }
@@ -184,12 +183,12 @@ void sendFriends(char *string, size_t size) {
 
 void sendAddFriends(char *string, size_t size) {
     memcpy(text, string + 4, size);
-    sendToClient(serverQueueID, ADD_FRIENDS, clientID, size);
+    sendToClient(serverQueueID, ADD, clientID, size);
 }
 
 void sendDelFriends(char *string, size_t size) {
     memcpy(text, string + 4, size);
-    sendToClient(serverQueueID, DEL_FRIENDS, clientID, size);
+    sendToClient(serverQueueID, DEL, clientID, size);
 }
 
 void sendToFriends(char *string, size_t size) {
