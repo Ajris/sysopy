@@ -129,7 +129,7 @@ Message receiveData(int id) {
     Message message;
     if (msgrcv(id, &message, MAX_MESSAGE_SIZE, -100, 0) == -1)
         printError("Coudlnt receive");
-    text = memcpy(text, message.text, message.textSize);
+    memcpy(text, message.text, message.textSize);
     return message;
 }
 

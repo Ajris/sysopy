@@ -133,7 +133,7 @@ Message receiveData(int id) {
     Message message;
     if (mq_receive(id, (char *)&message, MAX_MESSAGE_SIZE, NULL) == -1)
         printError("Coudlnt receive");
-    text = memcpy(text, message.text, message.textSize);
+    memcpy(text, message.text, message.textSize);
     return message;
 }
 
