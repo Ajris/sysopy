@@ -1,0 +1,2 @@
+ECHO text
+ECHO XD

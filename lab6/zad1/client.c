@@ -66,8 +66,10 @@ int main(int argc, char **argv) {
     if ((childPID = fork()) == 0) {
         while (1) {
             Message received = receiveData(clientQueueID);
-            if (received.type == ECHO)
-                printf("%s", received.text);
+            if (received.type == ECHO){
+                printf("GOT MESSAGE ECHO: %s\n", received.text);
+                printf("-------------\n");
+            }
             if (received.type == STOP) {
                 kill(getppid(), SIGUSR1);
                 exit(0);
@@ -77,9 +79,12 @@ int main(int argc, char **argv) {
         signal(SIGINT, handleCtrlC);
         signal(SIGUSR1, handleSIGUSR);
         char *comm = malloc(MAX_MESSAGE_LEN);
-        if (argc > 1) {
+        if (argc > 2) {
             FILE *fd;
-            if ((fd = fopen(argv[1], "r")) != NULL) {
+            if(strcmp(argv[1], "READ") != 0)
+                printError("NOT READ?");
+
+            if ((fd = fopen(argv[2], "r")) != NULL) {
                 char *input = malloc(MAX_FILE_SIZE);
                 fread(input, sizeof(char), MAX_FILE_SIZE, fd);
                 comm = strtok(input, "\n");
@@ -189,7 +194,7 @@ void sendToFriends(char *string, size_t size) {
 void handleInput(char *comm, size_t size) {
     if (strncmp(comm, "ECHO", 4) == 0) {
         sendEcho(comm, size - 5);
-    } else if (strcmp(comm, "LIST\n") == 0) {
+    } else if (strncmp(comm, "LIST", 4) == 0) {
         sendList();
     } else if (strncmp(comm, "2ALL", 4) == 0) {
         sendToAll(comm, size - 5);
@@ -217,6 +222,6 @@ void handleInput(char *comm, size_t size) {
     } else if (strcmp(comm, "STOP\n") == 0) {
         exit(0);
     } else {
-        printf("Wrong command\n");
+        printf("Wrong command -> %s\n", comm);
     }
 }
