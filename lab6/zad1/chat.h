@@ -23,6 +23,7 @@ enum messageTypes {
 #define MAX_MESSAGE_SIZE sizeof(Message)
 #define MAX_MESSAGE_LEN 100
 #define MAX_CLIENTS 10
+#define MAX_FILE_SIZE 1000
 
 typedef struct Message {
     long type;

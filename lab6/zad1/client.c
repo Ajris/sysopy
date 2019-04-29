@@ -15,83 +15,85 @@
 int clientQueueID;
 int serverQueueID;
 int clientID;
-pid_t child_pid;
-char* text;
-void receiveData(int id, int *type, int *value, int *textSize);
+pid_t childPID;
+char *text;
+
+Message receiveData(int id);
 
 void onQuit();
 
 void handleCtrlC(int signum);
 
-void sigusr_handler(int signum);
+void handleSIGUSR(int signum);
 
-void printError();
+void printError(char *message);
 
-void send_echo(char *string, size_t size);
+void sendEcho(char *string, size_t size);
 
-void send_list();
+void sendList();
 
-void send_to_all(char *string, size_t size);
+void sendToAll(char *string, size_t size);
 
-void send_to_one(char *string, int id, size_t size);
+void sendToOne(char *string, int id, size_t size);
 
-void send_friends(char *string, size_t size);
+void sendFriends(char *string, size_t size);
 
-void send_add_friends(char *string, size_t size);
+void sendAddFriends(char *string, size_t size);
 
-void send_del_friends(char *string, size_t size);
+void sendDelFriends(char *string, size_t size);
 
-void send_to_friends(char *string, size_t size);
+void sendToFriends(char *string, size_t size);
 
-void handle_input(char *comm, size_t size);
+void handleInput(char *comm, size_t size);
 
 void sendToClient(int id, int type, int value, int textSize);
 
 int main(int argc, char **argv) {
     text = malloc(MAX_MESSAGE_LEN);
-    key_t key = ftok(getenv("HOME"), 0);
-    if ((serverQueueID = msgget(key, 0)) == -1) printError();
-    key_t client_key = ftok(getenv("HOME"), getpid());
-    if ((clientQueueID = msgget(client_key, IPC_EXCL | IPC_CREAT | 0666)) == -1) printError();
+    if ((serverQueueID = msgget(ftok(getenv("HOME"), 0), 0)) == -1)
+        printError("Coudlnt get server queue");
+
+    if ((clientQueueID = msgget(ftok(getenv("HOME"), getpid()), IPC_CREAT | 0666)) == -1)
+        printError("Coudlnt get client queue");
+
     atexit(onQuit);
-    sendToClient(serverQueueID, INIT, client_key, 0);
-    receiveData(clientQueueID, NULL, &clientID, NULL);
-    printf("My id: %d\n", clientID);
-    size_t max_comm_len = MAX_MESSAGE_LEN + 6;
-    char *comm = malloc(MAX_MESSAGE_LEN + 6);
-    if ((child_pid = fork()) == -1) printError();
-    if (child_pid == 0) {
-        int type, value, textSize;
+
+    sendToClient(serverQueueID, INIT, ftok(getenv("HOME"), getpid()), 0);
+    Message message = receiveData(clientQueueID);
+    clientID = message.value;
+
+    printf("ID: %d\n", clientID);
+    if ((childPID = fork()) == 0) {
         while (1) {
-            receiveData(clientQueueID, &type, &value, &textSize);
-            if (type == ECHO) {
-                printf("%.*s", textSize, text);
-            }
-            if (type == STOP) {
+            Message received = receiveData(clientQueueID);
+            if (received.type == ECHO)
+                printf("%s", received.text);
+            if (received.type == STOP) {
                 kill(getppid(), SIGUSR1);
                 exit(0);
             }
         }
     } else {
         signal(SIGINT, handleCtrlC);
-        signal(SIGUSR1, sigusr_handler);
+        signal(SIGUSR1, handleSIGUSR);
+        char *comm = malloc(MAX_MESSAGE_LEN);
         if (argc > 1) {
             FILE *fd;
             if ((fd = fopen(argv[1], "r")) != NULL) {
-                char *input = malloc(5000);
-                fread(input, sizeof(char), 5000, fd);
-                char *saveptr;
-                char *comm = strtok_r(input, "\n", &saveptr);
+                char *input = malloc(MAX_FILE_SIZE);
+                fread(input, sizeof(char), MAX_FILE_SIZE, fd);
+                comm = strtok(input, "\n");
                 while (comm != NULL) {
                     comm[strlen(comm)] = '\n';
-                    handle_input(comm, strlen(comm) + 1);
-                    comm = strtok_r(NULL, "\n", &saveptr);
+                    handleInput(comm, strlen(comm) + 1);
+                    comm = strtok(NULL, "\n");
                 }
             }
         }
+        size_t MAX_MESSAGE_LEN_SIZE_T = MAX_MESSAGE_LEN + 6;
         while (1) {
-            size_t size = getline(&comm, &max_comm_len, stdin);
-            handle_input(comm, size);
+            size_t size = getline(&comm, &MAX_MESSAGE_LEN_SIZE_T, stdin);
+            handleInput(comm, size);
         }
     }
 }
@@ -109,113 +111,110 @@ void sendToClient(int id, int type, int value, int textSize) {
     if (textSize > 0) {
         memcpy(message.text, text, textSize);
     }
-    if (msgsnd(id, &message, MAX_MESSAGE_SIZE, 0) == -1) printError();
+    if (msgsnd(id, &message, MAX_MESSAGE_SIZE, 0) == -1)
+        printError("Coudlnt sent to client");
 }
 
-void receiveData(int id, int *type, int *value, int *textSize) {
+Message receiveData(int id) {
     Message message;
-    if (msgrcv(id, &message, MAX_MESSAGE_SIZE, 0, 0) == -1) printError();
-    if (type != NULL) *type = message.type;
-    if (value != NULL) *value = message.value;
-    if (textSize != NULL) {
-        *textSize = message.textSize;
-        if ((*textSize) > 0) {
-            memcpy(text, message.text, (*textSize));
-        }
-    }
+    if (msgrcv(id, &message, MAX_MESSAGE_SIZE, -100, 0) == -1)
+        printError("Coudlnt receive");
+    text = memcpy(text, message.text, message.textSize);
+    return message;
 }
+
 
 void onQuit() {
-    if (child_pid != 0) {
+    if (childPID != 0) {
         msgctl(clientQueueID, IPC_RMID, NULL);
         sendToClient(serverQueueID, STOP, clientID, 0);
-        kill(child_pid, SIGKILL);
+        exit(1);
     }
 }
 
 void handleCtrlC(int signum) {
-    printf("\nInterrupt signal\n");
+    printf("CTRLC PRESSED\n");
     exit(0);
 }
 
-void sigusr_handler(int signum) {
-    printf("Server stopped\n");
+void handleSIGUSR(int signum) {
+    printf("SERVER STOPPED\n");
     exit(0);
 }
 
-void printError() {
-    perror("Error");
-    exit(errno);
+void printError(char *message) {
+    fprintf(stderr, "%s", message);
+    exit(1);
 }
 
-void send_echo(char *string, size_t size) {
+void sendEcho(char *string, size_t size) {
     memcpy(text, string + 5, size);
     sendToClient(serverQueueID, ECHO, clientID, size);
 }
 
-void send_list() {
+void sendList() {
     sendToClient(serverQueueID, LIST, 0, 0);
 }
 
-void send_to_all(char *string, size_t size) {
+void sendToAll(char *string, size_t size) {
     memcpy(text, string + 5, size);
     sendToClient(serverQueueID, TO_ALL, clientID, size);
 }
 
-void send_to_one(char *string, int id, size_t size) {
+void sendToOne(char *string, int id, size_t size) {
     memcpy(text, string, size);
     sendToClient(serverQueueID, TO_ONE, id, size);
 }
 
-void send_friends(char *string, size_t size) {
+void sendFriends(char *string, size_t size) {
     memcpy(text, string + 8, size);
     sendToClient(serverQueueID, FRIENDS, clientID, size);
 }
 
-void send_add_friends(char *string, size_t size) {
+void sendAddFriends(char *string, size_t size) {
     memcpy(text, string + 4, size);
     sendToClient(serverQueueID, ADD_FRIENDS, clientID, size);
 }
 
-void send_del_friends(char *string, size_t size) {
+void sendDelFriends(char *string, size_t size) {
     memcpy(text, string + 4, size);
     sendToClient(serverQueueID, DEL_FRIENDS, clientID, size);
 }
 
-void send_to_friends(char *string, size_t size) {
+void sendToFriends(char *string, size_t size) {
     memcpy(text, string + 9, size);
     sendToClient(serverQueueID, TO_FRIENDS, clientID, size);
 }
 
-void handle_input(char *comm, size_t size) {
-    if (strncmp(comm, "echo", 4) == 0) {
-        send_echo(comm, size - 5);
-    } else if (strcmp(comm, "list\n") == 0) {
-        send_list();
-    } else if (strncmp(comm, "2all", 4) == 0) {
-        send_to_all(comm, size - 5);
-    } else if (strncmp(comm, "2one", 4) == 0) {
+void handleInput(char *comm, size_t size) {
+    if (strncmp(comm, "ECHO", 4) == 0) {
+        sendEcho(comm, size - 5);
+    } else if (strcmp(comm, "LIST\n") == 0) {
+        sendList();
+    } else if (strncmp(comm, "2ALL", 4) == 0) {
+        sendToAll(comm, size - 5);
+    } else if (strncmp(comm, "2ONE", 4) == 0) {
         strtok(comm, " ");
-        char *saveptr;
-        char *str = strtok_r(comm + 5, " ", &saveptr);
+        char *str = strtok(comm + 5, " ");
         if (str == NULL) {
             fprintf(stderr, "Wrong number of arguments\n");
             return;
         }
         int id = atoi(str);
-        str = strtok_r(NULL, " ", &saveptr);
+        str = strtok(NULL, " ");
         size_t size = 0;
-        if (str != NULL) size = strlen(str);
-        send_to_one(str, id, size);
-    } else if (strncmp(comm, "friendsNum", 7) == 0) {
-        send_friends(comm, size - 8);
-    } else if (strncmp(comm, "add", 3) == 0) {
-        send_add_friends(comm, size - 4);
-    } else if (strncmp(comm, "del", 3) == 0) {
-        send_del_friends(comm, size - 4);
-    } else if (strncmp(comm, "2friends", 8) == 0) {
-        send_to_friends(comm, size - 9);
-    } else if (strcmp(comm, "stop\n") == 0) {
+        if (str != NULL)
+            size = strlen(str);
+        sendToOne(str, id, size);
+    } else if (strncmp(comm, "FRIENDS", 7) == 0) {
+        sendFriends(comm, size - 8);
+    } else if (strncmp(comm, "ADD", 3) == 0) {
+        sendAddFriends(comm, size - 4);
+    } else if (strncmp(comm, "DEL", 3) == 0) {
+        sendDelFriends(comm, size - 4);
+    } else if (strncmp(comm, "2FRIENDS", 8) == 0) {
+        sendToFriends(comm, size - 9);
+    } else if (strcmp(comm, "STOP\n") == 0) {
         exit(0);
     } else {
         printf("Wrong command\n");
