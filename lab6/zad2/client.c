@@ -125,7 +125,7 @@ void sendToClient(int id, long type, long value, int textSize) {
 
     printf("\nSENDING MESSAGE ||| Type: %ld Value: %ld Text: %s\n", message.type, message.value, message.text);
 
-    if (mq_send(id, (char *)&message, MAX_MESSAGE_SIZE, 1) == -1)
+    if (mq_send(id, (char *)&message, MAX_MESSAGE_SIZE, message.type) == -1)
         printError("Coudlnt sent to client");
 }
 
