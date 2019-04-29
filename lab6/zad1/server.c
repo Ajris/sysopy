@@ -19,7 +19,7 @@ int friendsNumber = 0;
 int friendsNum[MAX_CLIENTS];
 char* text;
 
-void sendToClient(int id, int type, int value, int textSize);
+void sendToClient(int id, long type, long value, int textSize);
 
 Message receiveData(int id);
 
@@ -65,7 +65,7 @@ int main() {
 
     while (1) {
         message = receiveData(serverQueueID);
-        printf("RECEIVED MESSAGE: TYPE: %ld VALUE: %d TEXT: %s\n", message.type, message.value, message.text);
+        printf("RECEIVED MESSAGE: TYPE: %ld VALUE: %ld TEXT: %s\n", message.type, message.value, message.text);
         handleReceived(message);
     }
 }
@@ -73,10 +73,10 @@ int main() {
 size_t updateTextWithTime(Message message){
     time_t now;
     time(&now);
-    return sprintf(text, "TEXT: %s TIME: %s ID: %d", message.text, ctime(&now), message.value);
+    return sprintf(text, "TEXT: %s TIME: %s ID: %ld", message.text, ctime(&now), message.value);
 }
 
-void sendToClient(int id, int type, int value, int textSize) {
+void sendToClient(int id, long type, long value, int textSize) {
     Message message;
     message.type = type;
     message.value = value;
@@ -143,7 +143,7 @@ void handleFriends(Message message) {
     char *str = strtok(tmp, " ");
     friendsNumber = 0;
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        friendsNum[i] = 0;
+        friendsNum[i] = -1;
     }
     while (str != NULL) {
         int currentNumExists = 0;

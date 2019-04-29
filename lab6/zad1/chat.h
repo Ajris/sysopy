@@ -27,7 +27,7 @@ enum messageTypes {
 
 typedef struct Message {
     long type;
-    int value;
+    long value;
     size_t textSize;
     char text[MAX_MESSAGE_LEN];
 } Message;

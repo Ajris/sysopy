@@ -46,7 +46,7 @@ void sendToFriends(char *string, size_t size);
 
 void handleInput(char *comm, size_t size);
 
-void sendToClient(int id, int type, int value, int textSize);
+void sendToClient(int id, long type, long value, int textSize);
 
 int main(int argc, char **argv) {
     text = malloc(MAX_MESSAGE_LEN);
@@ -71,6 +71,7 @@ int main(int argc, char **argv) {
                 printf("-------------\n");
             }
             if (received.type == STOP) {
+                printf("GOT MESSAGE STOP");
                 kill(getppid(), SIGUSR1);
                 exit(0);
             }
@@ -104,11 +105,13 @@ int main(int argc, char **argv) {
 }
 
 
-void sendToClient(int id, int type, int value, int textSize) {
+void sendToClient(int id, long type, long value, int textSize) {
     Message message;
     message.type = type;
     message.value = value;
     message.textSize = textSize;
+    memcpy(message.text, "", 1);
+
     if (textSize > MAX_MESSAGE_LEN) {
         fprintf(stderr, "Message too long\n");
         exit(-1);
@@ -116,6 +119,9 @@ void sendToClient(int id, int type, int value, int textSize) {
     if (textSize > 0) {
         memcpy(message.text, text, textSize);
     }
+
+    printf("\nSENDING MESSAGE ||| Type: %ld Value: %ld Text: %s\n", message.type, message.value, message.text);
+
     if (msgsnd(id, &message, MAX_MESSAGE_SIZE, 0) == -1)
         printError("Coudlnt sent to client");
 }
@@ -219,7 +225,7 @@ void handleInput(char *comm, size_t size) {
         sendDelFriends(comm, size - 4);
     } else if (strncmp(comm, "2FRIENDS", 8) == 0) {
         sendToFriends(comm, size - 9);
-    } else if (strcmp(comm, "STOP\n") == 0) {
+    } else if (strncmp(comm, "STOP", 4) == 0) {
         exit(0);
     } else {
         printf("Wrong command -> %s\n", comm);
