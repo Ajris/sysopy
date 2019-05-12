@@ -15,12 +15,15 @@
 #include <sys/sem.h>
 #include <time.h>
 #include <errno.h>
+#include <wait.h>
 
 
 #define PROJECT_ID 18
 #define MAX_BOXES_IN_ASSEMBLY_LINE 100
 #define LINE_SEMAPHORE 0
 #define TRUCK_SEMAPHORE 1
+#define CANT_DECREMENT 1
+#define CAN DECREMENT
 
 typedef struct Truck{
     int maxBoxCount;
@@ -28,11 +31,11 @@ typedef struct Truck{
     int currentBoxNumber;
 } Truck;
 
-typedef struct Package {
+typedef struct Box {
     int weight;
     pid_t workerID;
-    clock_t loadTime;
-} Package;
+    time_t loadTime;
+} Box;
 
 typedef struct AssemblyLine {
     int maxWeight;
@@ -41,13 +44,13 @@ typedef struct AssemblyLine {
     int currentBoxes;
     int semaphoresID;
     int currentBoxInLine;
-    Package line[MAX_BOXES_IN_ASSEMBLY_LINE];
+    Box line[MAX_BOXES_IN_ASSEMBLY_LINE];
 } AssemblyLine;
 
 key_t getKey();
 void incSem(int semaphore, AssemblyLine* assemblyLine);
 void decSem(int semaphore, AssemblyLine* assemblyLine);
-void tryToDecSem(int semaphore, AssemblyLine* assemblyLine);
-
+int tryToDecSem(int semaphore, AssemblyLine* assemblyLine);
+void putBox(AssemblyLine* assemblyLine, Box box);
 
 #endif //ZAD1_BOTH_H

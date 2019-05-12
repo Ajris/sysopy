@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 
     assemblyLine = shmat(sharedMemoryID, NULL, 0);
 
-    if(assemblyLine == (void*)-1)
+    if (assemblyLine == (void *) -1)
         printError("Error getting assemblyline");
 
     assemblyLine->maxWeight = maxAssemblyLineWeight;
@@ -42,12 +42,6 @@ int main(int argc, char **argv) {
     assemblyLine->currentBoxInLine = 0;
     truck.maxBoxCount = maxTruckBoxCount;
 
-
-    if (shmdt(assemblyLine) == -1)
-        printError("Error unlinking");
-    if (shmctl(sharedMemoryID, IPC_RMID, NULL) == -1)
-        printError("Error deleting");
-
     int semid = semget(getKey(), 2, 0666 | IPC_CREAT | IPC_EXCL);
 
     if (semid == -1) {
@@ -56,10 +50,8 @@ int main(int argc, char **argv) {
         shmctl(semid, IPC_RMID, NULL);
         exit(-1);
     }
-    printf("Empty truck arrived\n");
 
     assemblyLine->semaphoresID = semid;
-    printf("Empty truck arrived\n");
 
     if (assemblyLine->semaphoresID == -1)
         printError("Error geting semaphoresID");
@@ -71,29 +63,22 @@ int main(int argc, char **argv) {
 
     printf("Empty truck arrived\n");
 
-    while (1) {
-        getBox();
-    }
+    getBox();
 }
 
 void getBox() {
     int currentTaken = 0;
     while (1) {
-        incSem(LINE_SEMAPHORE, assemblyLine);
-        while (currentTaken != assemblyLine->currentBoxInLine) {
-            Package newPackage = assemblyLine->line[currentTaken];
-            time_t currentTime;
-            time(&currentTime);
-            truck.currentWeight += newPackage.weight;
-            truck.currentBoxNumber++;
-            printf("LOADED PACKAGE: PID:%d | WEIGHT:%d | TIMEDIFF:%ld | TRUCK WEIGHT:%d | LEFT BOXES:%d",
-                   newPackage.workerID, newPackage.weight, newPackage.loadTime - currentTime, truck.currentWeight,
-                   truck.maxBoxCount - truck.currentBoxNumber);
-            currentTaken++;
-        }
         decSem(LINE_SEMAPHORE, assemblyLine);
-        tryToDecSem(TRUCK_SEMAPHORE, assemblyLine);
-        printf("1\n");
+        Box newPackage = assemblyLine->line[currentTaken];
+        truck.currentWeight += newPackage.weight;
+        truck.currentBoxNumber++;
+        assemblyLine->currentBoxes--;
+        assemblyLine->currentWeight -= truck.currentWeight;
+        printf("LOADED BOX: PID:%d | WEIGHT:%d | TIMEDIFF:%ld | TRUCK WEIGHT:%d | LEFT BOXES:%d\n",
+               newPackage.workerID, newPackage.weight, newPackage.loadTime - time(NULL), truck.currentWeight,
+               truck.maxBoxCount - truck.currentBoxNumber);
+        currentTaken++;
     }
 }
 
