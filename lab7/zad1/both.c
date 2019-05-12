@@ -36,18 +36,22 @@ int tryToDecSem(int semaphore, AssemblyLine *assemblyLine) {
 }
 
 void putBox(AssemblyLine *assemblyLine, Box box) {
+    sleep(rand()%2);
     int sent = 0;
     while (!sent) {
+        decSem(START_LINE_SEMAPHORE, assemblyLine);
         if (assemblyLine->maxWeight >= box.weight + assemblyLine->currentWeight) {
             box.loadTime = time(NULL);
             assemblyLine->line[assemblyLine->currentBoxInLine++] = box;
+            assemblyLine->currentBoxInLine %= MAX_BOXES_IN_ASSEMBLY_LINE;
             assemblyLine->currentWeight += box.weight;
             assemblyLine->currentBoxes++;
             sent = 1;
-            incSem(LINE_SEMAPHORE, assemblyLine);
+            incSem(END_LINE_SEMAPHORE, assemblyLine);
         }
+        incSem(START_LINE_SEMAPHORE, assemblyLine);
     }
-    printf("PLACED BOX: PID:%d | WEIGHT:%d | TIMEDIFF:%ld | LEFT WEIGHT:%d | LEFT BOXES:%d\n",
+    printf("PLACED BOX: PID:%d | WEIGHT:%d | TIME:%ld | LEFT WEIGHT:%d | LEFT BOXES:%d\n",
            box.workerID, box.weight, box.loadTime, assemblyLine->maxWeight - assemblyLine->currentWeight,
            assemblyLine->maxBoxes - assemblyLine->currentBoxes);
 }

@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
     assemblyLine->currentBoxInLine = 0;
     truck.maxBoxCount = maxTruckBoxCount;
 
-    int semid = semget(getKey(), 2, 0666 | IPC_CREAT | IPC_EXCL);
+    int semid = semget(getKey(), 3, 0666 | IPC_CREAT | IPC_EXCL);
 
     if (semid == -1) {
         printf("%d\n", errno);
@@ -56,7 +56,8 @@ int main(int argc, char **argv) {
     if (assemblyLine->semaphoresID == -1)
         printError("Error geting semaphoresID");
 
-    semctl(assemblyLine->semaphoresID, LINE_SEMAPHORE, SETVAL, 0);
+    semctl(assemblyLine->semaphoresID, END_LINE_SEMAPHORE, SETVAL, 0);
+    semctl(assemblyLine->semaphoresID, START_LINE_SEMAPHORE, SETVAL, 1);
     semctl(assemblyLine->semaphoresID, TRUCK_SEMAPHORE, SETVAL, 0);
 
     signal(SIGINT, handleCtrlC);
@@ -69,14 +70,15 @@ int main(int argc, char **argv) {
 void getBox() {
     int currentTaken = 0;
     while (1) {
-        decSem(LINE_SEMAPHORE, assemblyLine);
+        decSem(END_LINE_SEMAPHORE, assemblyLine);
+        currentTaken%=MAX_BOXES_IN_ASSEMBLY_LINE;
         Box newPackage = assemblyLine->line[currentTaken];
         truck.currentWeight += newPackage.weight;
         truck.currentBoxNumber++;
         assemblyLine->currentBoxes--;
-        assemblyLine->currentWeight -= truck.currentWeight;
+        assemblyLine->currentWeight -= newPackage.weight;
         printf("LOADED BOX: PID:%d | WEIGHT:%d | TIMEDIFF:%ld | TRUCK WEIGHT:%d | LEFT BOXES:%d\n",
-               newPackage.workerID, newPackage.weight, newPackage.loadTime - time(NULL), truck.currentWeight,
+               newPackage.workerID, newPackage.weight, time(NULL) - newPackage.loadTime, truck.currentWeight,
                truck.maxBoxCount - truck.currentBoxNumber);
         currentTaken++;
     }
