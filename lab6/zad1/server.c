@@ -117,11 +117,17 @@ void handleInit(Message message) {
 }
 
 void handleEcho(Message message) {
-    sendToClient(clientsQueueID[message.value], ECHO, 0, updateTextWithTime(message));
+    if(message.value >= lastClientNumber || message.value < 0)
+        sendToClient(clientsQueueID[message.value], ECHO, 0, updateTextWithTime(message));
+    else
+        printf("WRONG MESSAGE");
 }
 
 void handleToOne(Message message) {
-    sendToClient(clientsQueueID[message.value], ECHO, 0, updateTextWithTime(message));
+    if(message.value >= lastClientNumber || message.value < 0)
+        sendToClient(clientsQueueID[message.value], ECHO, 0, updateTextWithTime(message));
+    else
+        printf("WRONG MESSAGE");
 }
 
 void handleList() {
