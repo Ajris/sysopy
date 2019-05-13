@@ -53,7 +53,7 @@ typedef struct AssemblyLine {
 key_t getKey();
 void releaseSemaphore(int semaphore, AssemblyLine *assemblyLine);
 void takeSemaphore(int semaphore, AssemblyLine *assemblyLine);
-int tryToDecSem(int semaphore, AssemblyLine* assemblyLine);
+int tryToTakeSemaphore(int semaphore, AssemblyLine *assemblyLine);
 void putBox(AssemblyLine* assemblyLine, Box box);
 
 #endif //ZAD1_BOTH_H

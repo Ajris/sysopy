@@ -12,6 +12,8 @@ void printError(char *message);
 
 void handleCtrlC(int signum);
 
+void clearEverything();
+
 void getBox();
 
 int main(int argc, char **argv) {
@@ -58,13 +60,20 @@ int main(int argc, char **argv) {
 
     semctl(assemblyLine->semaphoresID, END_LINE_SEMAPHORE, SETVAL, 0);
     semctl(assemblyLine->semaphoresID, START_LINE_SEMAPHORE, SETVAL, 1);
-    semctl(assemblyLine->semaphoresID, TRUCK_SEMAPHORE, SETVAL, 0);
+    semctl(assemblyLine->semaphoresID, TRUCK_SEMAPHORE, SETVAL, truck.maxBoxCount);
 
     signal(SIGINT, handleCtrlC);
 
     printf("Empty truck arrived\n");
 
+    atexit(clearEverything);
+
     getBox();
+}
+
+void clearEverything(){
+    semctl(assemblyLine->semaphoresID, 0, IPC_RMID);
+    shmctl(shmget(getKey(), 0, 0), IPC_RMID, NULL);
 }
 
 void getBox() {
@@ -72,18 +81,19 @@ void getBox() {
     int i = 0;
     while (1) {
         printf("Waiting for box\n");
-        takeSemaphore(END_LINE_SEMAPHORE, assemblyLine);
-        takeSemaphore(START_LINE_SEMAPHORE, assemblyLine);
-        currentTaken%=MAX_BOXES_IN_ASSEMBLY_LINE;
-        Box box = assemblyLine->line[currentTaken];
-        if(truck.currentBoxNumber + 1 > truck.maxBoxCount){
-            printf("TRUCK IS FULL -> DEPARTURE STARTED\n");
-            printf("Truck %d => Weight:%d | Boxes:%d\n", i, truck.currentWeight, truck.currentBoxNumber);
-            truck.currentWeight = 0;
-            truck.currentBoxNumber = 0;
-            printf("Empty truck arrived\n");
-            i++;
+        if (assemblyLine->truckEnded == 1){
+            printf("Last Truck %d => Weight:%d | Boxes:%d\n", i, truck.currentWeight, truck.currentBoxNumber);
+            exit(0);
         }
+        takeSemaphore(END_LINE_SEMAPHORE, assemblyLine);
+        if (assemblyLine->truckEnded == 1){
+            printf("Last Truck %d => Weight:%d | Boxes:%d\n", i, truck.currentWeight, truck.currentBoxNumber);
+            exit(0);
+        }
+//        if(tryToTakeSemaphore(END_LINE_SEMAPHORE, assemblyLine)){
+        takeSemaphore(START_LINE_SEMAPHORE, assemblyLine);
+        currentTaken %= MAX_BOXES_IN_ASSEMBLY_LINE;
+        Box box = assemblyLine->line[currentTaken];
         truck.currentWeight += box.weight;
         truck.currentBoxNumber++;
         assemblyLine->currentBoxes--;
@@ -94,15 +104,27 @@ void getBox() {
                box.workerID, box.weight, end.tv_usec - box.loadTime.tv_usec, truck.currentWeight,
                truck.maxBoxCount - truck.currentBoxNumber);
         currentTaken++;
+
+        if (truck.currentBoxNumber == truck.maxBoxCount) {
+            printf("TRUCK IS FULL -> DEPARTURE STARTED\n");
+            printf("Truck %d => Weight:%d | Boxes:%d\n", i, truck.currentWeight, truck.currentBoxNumber);
+            truck.currentWeight = 0;
+            truck.currentBoxNumber = 0;
+            printf("Empty truck arrived\n");
+            i++;
+            struct sembuf s;
+            s.sem_flg = 0;
+            s.sem_num = TRUCK_SEMAPHORE;
+            s.sem_op = truck.maxBoxCount;
+            semop(assemblyLine->semaphoresID, &s, 1);
+        }
         releaseSemaphore(START_LINE_SEMAPHORE, assemblyLine);
+//        }
     }
 }
 
 void handleCtrlC(int signum) {
     assemblyLine->truckEnded = 1;
-    semctl(assemblyLine->semaphoresID, 0, IPC_RMID);
-    shmctl(shmget(getKey(), 0, 0), IPC_RMID, NULL);
-    exit(1);
 }
 
 void printError(char *message) {
