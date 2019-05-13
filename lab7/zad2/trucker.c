@@ -50,16 +50,24 @@ int main(int argc, char **argv) {
     truck.maxBoxCount = maxTruckBoxCount;
 
     sem_t *sem1 = sem_open("/END_LINE_SEMAPHORE", O_RDWR | O_CREAT, 0666, 0);
-    sem_t *sem2 = sem_open("/TRUCK_SEMAPHORE", O_RDWR | O_CREAT, 0666, 1);
-    sem_t *sem3 = sem_open("/START_LINE_SEMAPHORE", O_RDWR | O_CREAT, 0666, truck.maxBoxCount);
+    sem_t *sem2 = sem_open("/TRUCK_SEMAPHORE", O_RDWR | O_CREAT, 0666, truck.maxBoxCount);
+    sem_t *sem3 = sem_open("/START_LINE_SEMAPHORE", O_RDWR | O_CREAT, 0666, 1);
 
     if (sem1 == SEM_FAILED || sem2 == SEM_FAILED || sem3 == SEM_FAILED) {
         printError("ERROR");
     }
 
-    assemblyLine->semaphoresID[END_LINE_SEMAPHORE] = sem1;
-    assemblyLine->semaphoresID[TRUCK_SEMAPHORE] = sem2;
-    assemblyLine->semaphoresID[START_LINE_SEMAPHORE] = sem3;
+    sem_t *opensem1 = sem_open("/END_LINE_SEMAPHORE", O_RDWR , 0666);
+    sem_t *opensem2 = sem_open("/TRUCK_SEMAPHORE", O_RDWR , 0666);
+    sem_t *opensem3 = sem_open("/START_LINE_SEMAPHORE", O_RDWR , 0666);
+
+    if (opensem1 == SEM_FAILED || opensem2== SEM_FAILED || opensem3 == SEM_FAILED) {
+        printError("ERROR");
+    }
+
+    assemblyLine->semaphoresID[END_LINE_SEMAPHORE] = opensem1;
+    assemblyLine->semaphoresID[TRUCK_SEMAPHORE] = opensem2;
+    assemblyLine->semaphoresID[START_LINE_SEMAPHORE] = opensem3;
 
     signal(SIGINT, handleCtrlC);
 

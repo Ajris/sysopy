@@ -14,6 +14,13 @@ void releaseSemaphore(int semaphore, AssemblyLine *assemblyLine) {
 }
 
 void takeSemaphore(int semaphore, AssemblyLine *assemblyLine) {
+    int curr = 0;
+    sem_getvalue(assemblyLine->semaphoresID[0], &curr);
+    printf("%d\n", curr);
+    sem_getvalue(assemblyLine->semaphoresID[1], &curr);
+    printf("%d\n", curr);
+    sem_getvalue(assemblyLine->semaphoresID[2], &curr);
+    printf("%d\n", curr);
     sem_wait(assemblyLine->semaphoresID[semaphore]);
 }
 
@@ -26,11 +33,12 @@ int tryToTakeSemaphore(int semaphore, AssemblyLine *assemblyLine) {
 void putBox(AssemblyLine *assemblyLine, Box box) {
     sleep(rand() % 2);
     int sent = 0;
+
     while (!sent) {
         if (assemblyLine->truckEnded == 1 && assemblyLine->currentWeight == 0)
             exit(0);
-        takeSemaphore(START_LINE_SEMAPHORE, assemblyLine);
         printf("WTF\n");
+        takeSemaphore(START_LINE_SEMAPHORE, assemblyLine);
         if (assemblyLine->maxWeight >= box.weight + assemblyLine->currentWeight &&
             assemblyLine->currentBoxes + 1 <= assemblyLine->maxBoxes) {
             if(tryToTakeSemaphore(TRUCK_SEMAPHORE, assemblyLine) == 1){
