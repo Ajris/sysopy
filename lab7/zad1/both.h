@@ -24,8 +24,6 @@
 #define END_LINE_SEMAPHORE 0
 #define TRUCK_SEMAPHORE 1
 #define START_LINE_SEMAPHORE 2
-#define CANT_DECREMENT 1
-#define CAN DECREMENT
 
 typedef struct Truck{
     int maxBoxCount;

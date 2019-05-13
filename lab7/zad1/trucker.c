@@ -90,7 +90,6 @@ void getBox() {
             printf("Last Truck %d => Weight:%d | Boxes:%d\n", i, truck.currentWeight, truck.currentBoxNumber);
             exit(0);
         }
-//        if(tryToTakeSemaphore(END_LINE_SEMAPHORE, assemblyLine)){
         takeSemaphore(START_LINE_SEMAPHORE, assemblyLine);
         currentTaken %= MAX_BOXES_IN_ASSEMBLY_LINE;
         Box box = assemblyLine->line[currentTaken];
@@ -119,7 +118,6 @@ void getBox() {
             semop(assemblyLine->semaphoresID, &s, 1);
         }
         releaseSemaphore(START_LINE_SEMAPHORE, assemblyLine);
-//        }
     }
 }
 
