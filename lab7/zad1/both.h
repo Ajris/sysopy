@@ -16,6 +16,7 @@
 #include <time.h>
 #include <errno.h>
 #include <wait.h>
+#include <sys/time.h>
 
 
 #define PROJECT_ID 18
@@ -35,7 +36,7 @@ typedef struct Truck{
 typedef struct Box {
     int weight;
     pid_t workerID;
-    time_t loadTime;
+    struct timeval loadTime;
 } Box;
 
 typedef struct AssemblyLine {
@@ -45,12 +46,13 @@ typedef struct AssemblyLine {
     int currentBoxes;
     int semaphoresID;
     int currentBoxInLine;
+    int truckEnded;
     Box line[MAX_BOXES_IN_ASSEMBLY_LINE];
 } AssemblyLine;
 
 key_t getKey();
-void incSem(int semaphore, AssemblyLine* assemblyLine);
-void decSem(int semaphore, AssemblyLine* assemblyLine);
+void releaseSemaphore(int semaphore, AssemblyLine *assemblyLine);
+void takeSemaphore(int semaphore, AssemblyLine *assemblyLine);
 int tryToDecSem(int semaphore, AssemblyLine* assemblyLine);
 void putBox(AssemblyLine* assemblyLine, Box box);
 

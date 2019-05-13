@@ -9,7 +9,7 @@ key_t getKey() {
     return ftok(getenv("HOME"), PROJECT_ID);
 }
 
-void incSem(int semaphore, AssemblyLine *assemblyLine) {
+void releaseSemaphore(int semaphore, AssemblyLine *assemblyLine) {
     struct sembuf s;
     s.sem_flg = 0;
     s.sem_num = semaphore;
@@ -17,7 +17,7 @@ void incSem(int semaphore, AssemblyLine *assemblyLine) {
     semop(assemblyLine->semaphoresID, &s, 1);
 }
 
-void decSem(int semaphore, AssemblyLine *assemblyLine) {
+void takeSemaphore(int semaphore, AssemblyLine *assemblyLine) {
     struct sembuf s;
     s.sem_flg = 0;
     s.sem_num = semaphore;
@@ -39,19 +39,23 @@ void putBox(AssemblyLine *assemblyLine, Box box) {
     sleep(rand()%2);
     int sent = 0;
     while (!sent) {
-        decSem(START_LINE_SEMAPHORE, assemblyLine);
-        if (assemblyLine->maxWeight >= box.weight + assemblyLine->currentWeight) {
-            box.loadTime = time(NULL);
+        if(assemblyLine->truckEnded == 1 && assemblyLine->currentWeight == 0)
+            exit(0);
+        takeSemaphore(START_LINE_SEMAPHORE, assemblyLine);
+        if (assemblyLine->maxWeight >= box.weight + assemblyLine->currentWeight && assemblyLine->currentBoxes + 1 <= assemblyLine->maxBoxes) {
+            gettimeofday(&box.loadTime, NULL);
             assemblyLine->line[assemblyLine->currentBoxInLine++] = box;
             assemblyLine->currentBoxInLine %= MAX_BOXES_IN_ASSEMBLY_LINE;
             assemblyLine->currentWeight += box.weight;
             assemblyLine->currentBoxes++;
             sent = 1;
-            incSem(END_LINE_SEMAPHORE, assemblyLine);
+            releaseSemaphore(END_LINE_SEMAPHORE, assemblyLine);
         }
-        incSem(START_LINE_SEMAPHORE, assemblyLine);
+        releaseSemaphore(START_LINE_SEMAPHORE, assemblyLine);
     }
-    printf("PLACED BOX: PID:%d | WEIGHT:%d | TIME:%ld | LEFT WEIGHT:%d | LEFT BOXES:%d\n",
-           box.workerID, box.weight, box.loadTime, assemblyLine->maxWeight - assemblyLine->currentWeight,
+    printf("PLACED BOX: PID:%d | WEIGHT:%d | TIME:%ld | LEFT WEIGHT ON ASSEMBLY LINE:%d | LEFT BOXES:%d\n",
+           box.workerID, box.weight, box.loadTime.tv_usec, assemblyLine->maxWeight - assemblyLine->currentWeight,
            assemblyLine->maxBoxes - assemblyLine->currentBoxes);
+    if(assemblyLine->truckEnded == 1 && assemblyLine->currentWeight == 0)
+        exit(0);
 }
