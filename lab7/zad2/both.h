@@ -7,16 +7,18 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/shm.h>
 #include <sys/ipc.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <signal.h>
-#include <sys/sem.h>
 #include <time.h>
 #include <errno.h>
 #include <wait.h>
 #include <sys/time.h>
+#include <semaphore.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 
 #define PROJECT_ID 18
@@ -24,6 +26,7 @@
 #define END_LINE_SEMAPHORE 0
 #define TRUCK_SEMAPHORE 1
 #define START_LINE_SEMAPHORE 2
+
 
 typedef struct Truck{
     int maxBoxCount;
@@ -42,7 +45,7 @@ typedef struct AssemblyLine {
     int maxBoxes;
     int currentWeight;
     int currentBoxes;
-    int semaphoresID;
+    sem_t* semaphoresID[3];
     int currentBoxInLine;
     int truckEnded;
     Box line[MAX_BOXES_IN_ASSEMBLY_LINE];

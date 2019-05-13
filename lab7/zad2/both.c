@@ -10,27 +10,15 @@ key_t getKey() {
 }
 
 void releaseSemaphore(int semaphore, AssemblyLine *assemblyLine) {
-    struct sembuf s;
-    s.sem_flg = 0;
-    s.sem_num = semaphore;
-    s.sem_op = 1;
-    semop(assemblyLine->semaphoresID, &s, 1);
+    sem_post(assemblyLine->semaphoresID[semaphore]);
 }
 
 void takeSemaphore(int semaphore, AssemblyLine *assemblyLine) {
-    struct sembuf s;
-    s.sem_flg = 0;
-    s.sem_num = semaphore;
-    s.sem_op = -1;
-    semop(assemblyLine->semaphoresID, &s, 1);
+    sem_wait(assemblyLine->semaphoresID[semaphore]);
 }
 
 int tryToTakeSemaphore(int semaphore, AssemblyLine *assemblyLine) {
-    struct sembuf s;
-    s.sem_flg = IPC_NOWAIT;
-    s.sem_num = semaphore;
-    s.sem_op = -1;
-    if (semop(assemblyLine->semaphoresID, &s, 1) >= 0)
+    if (sem_trywait(assemblyLine->semaphoresID[semaphore]) >= 0)
         return 1;
     return 0;
 }
@@ -42,6 +30,7 @@ void putBox(AssemblyLine *assemblyLine, Box box) {
         if (assemblyLine->truckEnded == 1 && assemblyLine->currentWeight == 0)
             exit(0);
         takeSemaphore(START_LINE_SEMAPHORE, assemblyLine);
+        printf("WTF\n");
         if (assemblyLine->maxWeight >= box.weight + assemblyLine->currentWeight &&
             assemblyLine->currentBoxes + 1 <= assemblyLine->maxBoxes) {
             if(tryToTakeSemaphore(TRUCK_SEMAPHORE, assemblyLine) == 1){

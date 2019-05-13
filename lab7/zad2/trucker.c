@@ -4,7 +4,6 @@
 
 #include "both.h"
 
-int sharedMemoryID;
 AssemblyLine *assemblyLine;
 Truck truck;
 
@@ -29,10 +28,16 @@ int main(int argc, char **argv) {
     if (maxAssemblyLineBoxCount > MAX_BOXES_IN_ASSEMBLY_LINE)
         printError("Too many");
 
-    if ((sharedMemoryID = shmget(getKey(), sizeof(AssemblyLine), IPC_CREAT | 0666 | IPC_EXCL)) < 0)
-        printError("Error creating shared memory");
+//    if ((sharedMemoryID = shmget(getKey(), sizeof(AssemblyLine), IPC_CREAT | 0666 | IPC_EXCL)) < 0)
+//        printError("Error creating shared memory");
 
-    assemblyLine = shmat(sharedMemoryID, NULL, 0);
+    int desc = shm_open("/sharedMemory", O_CREAT | O_RDWR , 0666);
+    if (desc < 0)
+        printError("ERROR");
+    if (ftruncate(desc, sizeof(AssemblyLine)) == -1)
+        printError("ERROR");
+
+    assemblyLine = mmap(NULL, sizeof(AssemblyLine), PROT_READ | PROT_WRITE, MAP_SHARED, desc, 0);
 
     if (assemblyLine == (void *) -1)
         printError("Error getting assemblyline");
@@ -44,23 +49,17 @@ int main(int argc, char **argv) {
     assemblyLine->currentBoxInLine = 0;
     truck.maxBoxCount = maxTruckBoxCount;
 
-    int semid = semget(getKey(), 3, 0666 | IPC_CREAT | IPC_EXCL);
+    sem_t *sem1 = sem_open("/END_LINE_SEMAPHORE", O_RDWR | O_CREAT, 0666, 0);
+    sem_t *sem2 = sem_open("/TRUCK_SEMAPHORE", O_RDWR | O_CREAT, 0666, 1);
+    sem_t *sem3 = sem_open("/START_LINE_SEMAPHORE", O_RDWR | O_CREAT, 0666, truck.maxBoxCount);
 
-    if (semid == -1) {
-        printf("%d\n", errno);
-        shmdt(assemblyLine);
-        shmctl(semid, IPC_RMID, NULL);
-        exit(-1);
+    if (sem1 == SEM_FAILED || sem2 == SEM_FAILED || sem3 == SEM_FAILED) {
+        printError("ERROR");
     }
 
-    assemblyLine->semaphoresID = semid;
-
-    if (assemblyLine->semaphoresID == -1)
-        printError("Error geting semaphoresID");
-
-    semctl(assemblyLine->semaphoresID, END_LINE_SEMAPHORE, SETVAL, 0);
-    semctl(assemblyLine->semaphoresID, START_LINE_SEMAPHORE, SETVAL, 1);
-    semctl(assemblyLine->semaphoresID, TRUCK_SEMAPHORE, SETVAL, truck.maxBoxCount);
+    assemblyLine->semaphoresID[END_LINE_SEMAPHORE] = sem1;
+    assemblyLine->semaphoresID[TRUCK_SEMAPHORE] = sem2;
+    assemblyLine->semaphoresID[START_LINE_SEMAPHORE] = sem3;
 
     signal(SIGINT, handleCtrlC);
 
@@ -71,9 +70,11 @@ int main(int argc, char **argv) {
     getBox();
 }
 
-void clearEverything(){
-    semctl(assemblyLine->semaphoresID, 0, IPC_RMID);
-    shmctl(shmget(getKey(), 0, 0), IPC_RMID, NULL);
+void clearEverything() {
+    sem_unlink("/END_LINE_SEMAPHORE");
+    sem_unlink("/TRUCK_SEMAPHORE");
+    sem_unlink("/START_LINE_SEMAPHORE");
+    shm_unlink("/sharedMemory");
 }
 
 void getBox() {
@@ -81,12 +82,12 @@ void getBox() {
     int i = 0;
     while (1) {
         printf("Waiting for box\n");
-        if (assemblyLine->truckEnded == 1){
+        if (assemblyLine->truckEnded == 1) {
             printf("Last Truck %d => Weight:%d | Boxes:%d\n", i, truck.currentWeight, truck.currentBoxNumber);
             exit(0);
         }
         takeSemaphore(END_LINE_SEMAPHORE, assemblyLine);
-        if (assemblyLine->truckEnded == 1){
+        if (assemblyLine->truckEnded == 1) {
             printf("Last Truck %d => Weight:%d | Boxes:%d\n", i, truck.currentWeight, truck.currentBoxNumber);
             exit(0);
         }
@@ -111,11 +112,8 @@ void getBox() {
             truck.currentBoxNumber = 0;
             printf("Empty truck arrived\n");
             i++;
-            struct sembuf s;
-            s.sem_flg = 0;
-            s.sem_num = TRUCK_SEMAPHORE;
-            s.sem_op = truck.maxBoxCount;
-            semop(assemblyLine->semaphoresID, &s, 1);
+            for(int j = 0; j < truck.maxBoxCount; j++)
+                sem_post(assemblyLine->semaphoresID[TRUCK_SEMAPHORE]);
         }
         releaseSemaphore(START_LINE_SEMAPHORE, assemblyLine);
     }

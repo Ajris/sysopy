@@ -13,12 +13,13 @@ int main(int argc, char **argv) {
 
     int workers = atoi(argv[1]);
 
-    int id = shmget(getKey(), 0, 0);
-    if(id == -1)
-        printError("ERROR");
-    assemblyLine = shmat(id, NULL, 0);
+    int desc = shm_open("/sharedMemory", O_RDWR, 0);
+    if(desc == -1)
+        printError("ERROR WITH OPENING MEMORY");
+    assemblyLine = mmap(NULL, sizeof(AssemblyLine), PROT_READ | PROT_WRITE, MAP_SHARED, desc, 0);
+
     if(assemblyLine == (void*)-1)
-        printError("ERROR");
+        printError("ERROR WITH GETTING ASSEMBLY LINE");
 
     for(int i = 0; i < workers; i++){
         if(fork() == 0){

@@ -6,3 +6,6 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall ")
 
 add_executable(loader loader.c both.h both.c)
 add_executable(trucker trucker.c both.h both.c)
+
+target_link_libraries(loader rt pthread)
+target_link_libraries(trucker rt pthread)
