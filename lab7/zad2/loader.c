@@ -18,6 +18,10 @@ int main(int argc, char **argv) {
         printError("ERROR WITH OPENING MEMORY");
     assemblyLine = mmap(NULL, sizeof(AssemblyLine), PROT_READ | PROT_WRITE, MAP_SHARED, desc, 0);
 
+    semaphores[END_LINE_SEMAPHORE] = sem_open("/END_LINE_SEMAPHORE", O_RDWR , 0666);
+    semaphores[TRUCK_SEMAPHORE] = sem_open("/TRUCK_SEMAPHORE", O_RDWR , 0666);
+    semaphores[START_LINE_SEMAPHORE] = sem_open("/START_LINE_SEMAPHORE", O_RDWR , 0666);
+
     if(assemblyLine == (void*)-1)
         printError("ERROR WITH GETTING ASSEMBLY LINE");
 
@@ -39,7 +43,6 @@ int main(int argc, char **argv) {
             }
         }
     }
-
     for (int i = 0; i < workers; i++) {
         wait(NULL);
     }

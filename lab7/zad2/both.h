@@ -45,16 +45,16 @@ typedef struct AssemblyLine {
     int maxBoxes;
     int currentWeight;
     int currentBoxes;
-    sem_t* semaphoresID[3];
     int currentBoxInLine;
     int truckEnded;
     Box line[MAX_BOXES_IN_ASSEMBLY_LINE];
 } AssemblyLine;
 
-key_t getKey();
-void releaseSemaphore(int semaphore, AssemblyLine *assemblyLine);
-void takeSemaphore(int semaphore, AssemblyLine *assemblyLine);
-int tryToTakeSemaphore(int semaphore, AssemblyLine *assemblyLine);
+sem_t* semaphores[3];
+
+void releaseSemaphore(int semaphore);
+void takeSemaphore(int semaphore);
+int tryToTakeSemaphore(int semaphore);
 void putBox(AssemblyLine* assemblyLine, Box box);
 
 #endif //ZAD1_BOTH_H

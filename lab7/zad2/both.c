@@ -1,31 +1,18 @@
 //
 // Created by ajris on 12.05.19.
 //
-
-
 #include "both.h"
 
-key_t getKey() {
-    return ftok(getenv("HOME"), PROJECT_ID);
+void releaseSemaphore(int semaphore) {
+    sem_post(semaphores[semaphore]);
 }
 
-void releaseSemaphore(int semaphore, AssemblyLine *assemblyLine) {
-    sem_post(assemblyLine->semaphoresID[semaphore]);
+void takeSemaphore(int semaphore) {
+    sem_wait(semaphores[semaphore]);
 }
 
-void takeSemaphore(int semaphore, AssemblyLine *assemblyLine) {
-    int curr = 0;
-    sem_getvalue(assemblyLine->semaphoresID[0], &curr);
-    printf("%d\n", curr);
-    sem_getvalue(assemblyLine->semaphoresID[1], &curr);
-    printf("%d\n", curr);
-    sem_getvalue(assemblyLine->semaphoresID[2], &curr);
-    printf("%d\n", curr);
-    sem_wait(assemblyLine->semaphoresID[semaphore]);
-}
-
-int tryToTakeSemaphore(int semaphore, AssemblyLine *assemblyLine) {
-    if (sem_trywait(assemblyLine->semaphoresID[semaphore]) >= 0)
+int tryToTakeSemaphore(int semaphore) {
+    if (sem_trywait(semaphores[semaphore]) >= 0)
         return 1;
     return 0;
 }
@@ -37,23 +24,22 @@ void putBox(AssemblyLine *assemblyLine, Box box) {
     while (!sent) {
         if (assemblyLine->truckEnded == 1 && assemblyLine->currentWeight == 0)
             exit(0);
-        printf("WTF\n");
-        takeSemaphore(START_LINE_SEMAPHORE, assemblyLine);
+        takeSemaphore(START_LINE_SEMAPHORE);
         if (assemblyLine->maxWeight >= box.weight + assemblyLine->currentWeight &&
             assemblyLine->currentBoxes + 1 <= assemblyLine->maxBoxes) {
-            if(tryToTakeSemaphore(TRUCK_SEMAPHORE, assemblyLine) == 1){
+            if(tryToTakeSemaphore(TRUCK_SEMAPHORE) == 1){
                 gettimeofday(&box.loadTime, NULL);
                 assemblyLine->line[assemblyLine->currentBoxInLine++] = box;
                 assemblyLine->currentBoxInLine %= MAX_BOXES_IN_ASSEMBLY_LINE;
                 assemblyLine->currentWeight += box.weight;
                 assemblyLine->currentBoxes++;
                 sent = 1;
-                releaseSemaphore(END_LINE_SEMAPHORE, assemblyLine);
+                releaseSemaphore(END_LINE_SEMAPHORE);
             } else {
                 printf("TRUCK WILL BE FULL\n");
             }
         }
-        releaseSemaphore(START_LINE_SEMAPHORE, assemblyLine);
+        releaseSemaphore(START_LINE_SEMAPHORE);
     }
 
     printf("PLACED BOX: PID:%d | WEIGHT:%d | TIME:%ld | LEFT WEIGHT ON ASSEMBLY LINE:%d | LEFT BOXES:%d\n",
