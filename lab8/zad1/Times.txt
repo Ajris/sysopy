@@ -1,0 +1,24 @@
+THREAD NUMBER: 1 MODE: block FILTER: filter3.txt IMAGEFILE: imageFile.pgm OUTPUTFILE: outFile.pgm
+ 0: 93452 |
+Full time: 234197
+THREAD NUMBER: 2 MODE: block FILTER: filter3.txt IMAGEFILE: imageFile.pgm OUTPUTFILE: outFile.pgm
+ 0: 59189 | 1: 57311 |
+Full time: 200275
+THREAD NUMBER: 4 MODE: block FILTER: filter3.txt IMAGEFILE: imageFile.pgm OUTPUTFILE: outFile.pgm
+ 0: 38134 | 1: 37984 | 2: 35373 | 3: 34350 |
+Full time: 144972
+THREAD NUMBER: 8 MODE: block FILTER: filter3.txt IMAGEFILE: imageFile.pgm OUTPUTFILE: outFile.pgm
+ 0: 13157 | 1: 7409 | 2: 11656 | 3: 12942 | 4: 12830 | 5: 12958 | 6: 8578 | 7: 11499 |
+Full time: 86527
+THREAD NUMBER: 1 MODE: block FILTER: filter33.txt IMAGEFILE: imageFile.pgm OUTPUTFILE: outFile.pgm
+ 0: 6162277 |
+Full time: 6251421
+THREAD NUMBER: 2 MODE: block FILTER: filter33.txt IMAGEFILE: imageFile.pgm OUTPUTFILE: outFile.pgm
+ 0: 3151546 | 1: 3153065 |
+Full time: 3274102
+THREAD NUMBER: 4 MODE: block FILTER: filter33.txt IMAGEFILE: imageFile.pgm OUTPUTFILE: outFile.pgm
+ 0: 1609085 | 1: 1781654 | 2: 1759127 | 3: 1597699 |
+Full time: 1887123
+THREAD NUMBER: 8 MODE: block FILTER: filter33.txt IMAGEFILE: imageFile.pgm OUTPUTFILE: outFile.pgm
+ 0: 1402649 | 1: 1445837 | 2: 1458305 | 3: 1439950 | 4: 1449763 | 5: 1454225 | 6: 1490111 | 7: 1465782 |
+Full time: 1570116
