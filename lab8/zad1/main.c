@@ -203,7 +203,8 @@ void createOutImage(FILE *outFile) {
     fprintf(outFile, "P2\n%i %i\n255\n", outputMatrix->width, outputMatrix->height);
     for (int y = 0; y < outputMatrix->height; y++) {
         for (int x = 0; x < outputMatrix->width; x++) {
-            fprintf(outFile, "%i", outputMatrix->matrix[y][x]);
+
+            fprintf(outFile, "%i", outputMatrix->matrix[y][x] > 0 ? outputMatrix->matrix[y][x] : 0);
             if (x + 1 != outputMatrix->width)
                 fputc(' ', outFile);
         }
