@@ -19,6 +19,7 @@ main2
 monitor
 CMakeFiles
 Makefile
+!kol2/**/Makefile
 CMakeCache.txt
 mainShared
 mainStatic
