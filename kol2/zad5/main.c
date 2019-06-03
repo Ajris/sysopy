@@ -15,13 +15,13 @@
 int main(int argc, char **args) {
     if (argc != 4) {
         printf("Not a suitable number of program parameters\n");
-        return (1);
+        return 1;
     }
     /************************************
       Utworz semafor posixowy. Ustaw jego wartosc na 1
      *************************************/
     sem_t *sem_id = sem_open(SEM_NAME, O_CREAT, 0644, 1);
-    int fd = open(FILE_NAME, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    int fd = open(FILE_NAME, O_WRONLY | O_CREAT , 0644);
 
     int parentLoopCounter = atoi(args[1]);
     int childLoopCounter = atoi(args[2]);
