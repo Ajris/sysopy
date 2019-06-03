@@ -25,5 +25,6 @@ int main(int argc, char **argv) {
     zapisz tam wartosc przekazana jako parametr wywolania programu
     posprzataj
     *****************************************/
+    munmap(t, MAX_SIZE);
     return 0;
 }

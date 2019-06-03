@@ -22,6 +22,7 @@ int main(int argc, char **argv) {
     odczytaj zapisana tam wartosc i przypisz ja do zmiennej val
     posprzataj
     *********************************************/
+    munmap(tmp, MAX_SIZE);
     shm_unlink(SHM_NAME);
     printf("%d square is: %d \n", val, val * val);
     return 0;
