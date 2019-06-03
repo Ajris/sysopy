@@ -13,11 +13,10 @@ Uzupelnij oznaczone framenty kody zwiazane z operacjami na muteksie i zmiennej w
 #include <unistd.h>
 #include <stdlib.h>
 #include <pthread.h>
-
+#include <string.h>
 
 static pthread_cond_t threadDied = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t threadMutex = PTHREAD_MUTEX_INITIALIZER;
-           
 
 static int totThreads = 0;      /* Calkowita liczba stworzonych watkow */
 static int numLive = 0;         /* Calkowita liczba watkow wciaz zywych lub zakonczonych ale jeszcze nie joined */
@@ -35,9 +34,7 @@ static struct {                 /* Informacja o kazdym watku */
     int sleepTime;              /* Liczba sekund zycia watku  */
 } *thread;
 
-static void *                   /* Funkcja startowa watku */
-threadFunc(void *arg)
-{
+static void *threadFunc(void *arg) {
     int idx = (int) arg;
     int s;
 
@@ -45,57 +42,50 @@ threadFunc(void *arg)
     printf("Thread %d terminating\n", idx);
 
     s = pthread_mutex_lock(&threadMutex);/*UZUPELNIC: zajmij mutex threadMutex */
-    
-    if (s != 0)
-       {
+
+    if (s != 0) {
         printf(s, "%d error 1");
         exit(-1);
-       }
+    }
     numUnjoined++;
     thread[idx].state = TS_TERMINATED;
 
-    s = /*UZUPELNIC: zwolnij mutex threadMutex */
-    if (s != 0)
-        {printf("%d error 2",s);
-         exit(-1);
-        }
-    s = pthread_cond_boadcast(&threadDied);/*UZUPELNIC: zasygnalizuj zmienna warunkowa threadDied */
-    if (s != 0)
-       {
-        printf("%d error 3",s);
+    s = pthread_mutex_unlock(&threadMutex);/*UZUPELNIC: zwolnij mutex threadMutex */
+    if (s != 0) {
+        printf("%d error 2", s);
         exit(-1);
-       } 
+    }
+    s = pthread_cond_signal(&threadDied);/*UZUPELNIC: zasygnalizuj zmienna warunkowa threadDied */
+    if (s != 0) {
+        printf("%d error 3", s);
+        exit(-1);
+    }
     return NULL;
 }
 
-int
-main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     int s, idx;
 
-    if (argc < 2 || strcmp(argv[1], "--help") == 0)
-       {
+    if (argc < 2 || strcmp(argv[1], "--help") == 0) {
         printf("%s num-secs...\n", argv[0]);
         exit(-1);
-       }
+    }
 
     thread = calloc(argc - 1, sizeof(*thread));
-    if (thread == NULL)
-       {
+    if (thread == NULL) {
         printf("calloc");
         exit(-1);
-       }  
-   
+    }
+
 
     for (idx = 0; idx < argc - 1; idx++) {
         thread[idx].sleepTime = atoi(argv[idx + 1]);
         thread[idx].state = TS_ALIVE;
         s = pthread_create(&thread[idx].tid, NULL, threadFunc, (void *) idx);
-        if (s != 0)
-           {
+        if (s != 0) {
             printf(s, "%d pthread_create");
             exit(-1);
-           }
+        }
     }
 
     totThreads = argc - 1;
@@ -103,30 +93,27 @@ main(int argc, char *argv[])
 
 
     while (numLive > 0) {
-        s = /*UZUPELNIC: zajmij mutex threadMutex */
-        if (s != 0)
-           {
+        s = pthread_mutex_lock(&threadMutex);/*UZUPELNIC: zajmij mutex threadMutex */
+        if (s != 0) {
             printf("%d error 4", s);
             exit(-1);
-           }
+        }
 
         while (numUnjoined == 0) {
-            s = /*UZUPELNIC:  czekaj na zmiennej warunkowej threadDied zwiazanej z mutekesem threadMutex */
-            if (s != 0)
-              {
+            s = pthread_cond_wait(&threadDied, &threadMutex);/*UZUPELNIC:  czekaj na zmiennej warunkowej threadDied zwiazanej z mutekesem threadMutex */
+            if (s != 0) {
                 printf("%d error 5", s);
                 exit(-1);
-              }
+            }
         }
 
         for (idx = 0; idx < totThreads; idx++) {
             if (thread[idx].state == TS_TERMINATED) {
                 s = pthread_join(thread[idx].tid, NULL);
-                if (s != 0)
-                   {
+                if (s != 0) {
                     printf("%d pthread_join", s);
                     exit(-1);
-                   }
+                }
                 thread[idx].state = TS_JOINED;
                 numLive--;
                 numUnjoined--;
@@ -135,12 +122,11 @@ main(int argc, char *argv[])
             }
         }
 
-        s = /*UZUPELNIC: zwolnij mutex threadMutex */
-        if (s != 0)
-           {
-            printf("%d error 6",s );
+        s = pthread_mutex_unlock(&threadMutex);/*UZUPELNIC: zwolnij mutex threadMutex */
+        if (s != 0) {
+            printf("%d error 6", s);
             exit(-1);
-           }
+        }
     }
 
     exit(EXIT_SUCCESS);
