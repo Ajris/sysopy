@@ -15,7 +15,23 @@
 
 #define FILE_NAME "common.txt"
 #define SEM_NAME "/kol_sem"
+int semid;
 
+void releaseSemaphore() {
+    struct sembuf s;
+    s.sem_flg = 0;
+    s.sem_num = 0;
+    s.sem_op = 1;
+    semop(semid, &s, 1);
+}
+
+void takeSemaphore() {
+    struct sembuf s;
+    s.sem_flg = 0;
+    s.sem_num = 0;
+    s.sem_op = -1;
+    semop(semid, &s, 1);
+}
 
 int main(int argc, char **args) {
 
@@ -28,17 +44,20 @@ int main(int argc, char **args) {
     Stworz semafor systemu V
     Ustaw jego wartosc na 1
     ***************************************************/
+    semget(ftok(FILE_NAME, 1), 1, 0666 | IPC_CREAT | IPC_EXCL);
+    semctl(semid, 0, SETVAL, 1);
+
     int fd = open(FILE_NAME, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 
     int parentLoopCounter = atoi(args[1]);
     int childLoopCounter = atoi(args[2]);
 
-    char buf[20];
+    char buf[50];
     pid_t childPid;
     int max_sleep_time = atoi(args[3]);
 
 
-    if (childPid = fork()) {
+    if ((childPid = fork())) {
         int status = 0;
         srand((unsigned) time(0));
 
@@ -49,11 +68,13 @@ int main(int argc, char **args) {
             /*****************************************
             sekcja krytyczna zabezpiecz dostep semaforem
             **********************************************/
+            takeSemaphore();
 
             sprintf(buf, "Wpis rodzica. Petla %d. Spalem %d\n", parentLoopCounter, s);
             write(fd, buf, strlen(buf));
             write(1, buf, strlen(buf));
 
+            releaseSemaphore();
             /*********************************
             Koniec sekcji krytycznej
             **********************************/
@@ -61,13 +82,12 @@ int main(int argc, char **args) {
         }
         waitpid(childPid, &status, 0);
     } else {
-
         srand((unsigned) time(0));
         while (childLoopCounter--) {
 
             int s = rand() % max_sleep_time + 1;
             sleep(s);
-
+            takeSemaphore();
 
             /*****************************************
             sekcja krytyczna zabezpiecz dostep semaforem
@@ -78,6 +98,7 @@ int main(int argc, char **args) {
             write(fd, buf, strlen(buf));
             write(1, buf, strlen(buf));
 
+            releaseSemaphore();
             /*********************************
             Koniec sekcji krytycznej
             **********************************/
@@ -85,7 +106,7 @@ int main(int argc, char **args) {
         }
         _exit(0);
     }
-
+    semctl(semid, 0, IPC_RMID);
     /*****************************
     posprzataj semafor
     ******************************/
