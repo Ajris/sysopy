@@ -6,37 +6,34 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#define KEY  "/home/ajris"
 
-#define KEY  "./queuekey"
-
+struct mess {
+    long mtype;
+    long val;
+};
 
 int main() {
-        sleep(1);
-        int val = 0;
+    sleep(1);
+    int val = 0;
+    int id = msgget(ftok(KEY, 1), 0666);
+    struct mess m;
+    msgrcv(id, &m, sizeof(long), -100, 0);
+    val = m.val;
+    /**********************************
+    Otworz kolejke systemu V "reprezentowana" przez KEY
+    **********************************/
+    /**********************************
+    Odczytaj zapisane w kolejce wartosci i przypisz je do zmiennej val
+    obowiazuja funkcje systemu V
+    ************************************/
 
+    printf("%d square is: %d\n", val, val * val);
 
-	/**********************************
-	Otworz kolejke systemu V "reprezentowana" przez KEY
-	**********************************/
+    /*******************************
+    posprzataj
+    ********************************/
+    msgctl(id, IPC_RMID, NULL);
 
-	
-
-
-	while(1)
- 	{	
-	    /**********************************
-	    Odczytaj zapisane w kolejce wartosci i przypisz je do zmiennej val
-	    obowiazuja funkcje systemu V
-	    ************************************/
-
-        	 printf("%d square is: %d\n", val, val*val);
- 
-	}
-
-	/*******************************
-	posprzataj
-	********************************/
-
-
-     return 0;
-   }
+    return 0;
+}
