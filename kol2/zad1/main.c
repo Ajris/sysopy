@@ -34,7 +34,9 @@ int main(int argc, char **args) {
     **************************************************/
     pthread_t* pthread = malloc(sizeof(pthread_t) * n);
     for(int i = 0; i < n; i++){
-        pthread_create(&pthread[i], NULL, hello, &i);
+        int* j = malloc(sizeof(int));
+        memcpy(j, &i, sizeof(int));
+        pthread_create(&pthread[i], NULL, hello, j);
     }
 
     int i = 0;
