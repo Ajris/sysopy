@@ -15,7 +15,6 @@ main2
 /lab3/zad2/archiwum
 /lab3/zad3/archiwum
 /lab2/zad1/outputcp
-/lab10
 *.tar.gz
 monitor
 CMakeFiles
@@ -126,3 +125,7 @@ dkms.conf
 /kol2/zad12/sender
 /kol2/zad13/zad1
 /kol2/zad14/zad2
+/lab10/zad1/client
+/lab10/zad1/server
+/lab10/zad2/server
+/lab10/zad2/client
