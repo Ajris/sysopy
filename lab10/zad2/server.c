@@ -42,7 +42,7 @@ void deleteClient(int);
 
 int getClientByName(char *);
 
-SocketMessage get_msg(int, struct sockaddr *, socklen_t *);
+SocketMessage getMessage(int, struct sockaddr *, socklen_t *);
 
 void deleteMessage(SocketMessage);
 
@@ -212,7 +212,7 @@ void handleMessage(int sock) {
     struct sockaddr *addr = malloc(sizeof(struct sockaddr));
     if (addr == NULL) die_errno();
     socklen_t addr_len = sizeof(struct sockaddr);
-    SocketMessage msg = get_msg(sock, addr, &addr_len);
+    SocketMessage msg = getMessage(sock, addr, &addr_len);
     pthread_mutex_lock(&clientMutex);
 
     switch (msg.type) {
@@ -315,12 +315,12 @@ void sendMessage(int sock, SocketMessage msg) {
     free(buff);
 }
 
-void sendEmptyMessage(int, SocketMessageType) {
+void sendEmptyMessage(int i, SocketMessageType reply) {
     SocketMessage msg = {reply, 0, 0, 0, NULL, NULL};
     sendMessage(i, msg);
-};
+}
 
-SocketMessage get_msg(int sock, struct sockaddr *addr, socklen_t *addr_len) {
+SocketMessage getMessage(int sock, struct sockaddr * addr, socklen_t *addr_len) {
     SocketMessage msg;
     ssize_t head_size = sizeof(msg.type) + sizeof(msg.size) + sizeof(msg.nameSize) + sizeof(msg.id);
     int8_t buff[head_size];
@@ -360,7 +360,7 @@ SocketMessage get_msg(int sock, struct sockaddr *addr, socklen_t *addr_len) {
     return msg;
 }
 
-void deleteMessage(SocketMessage) {
+void deleteMessage(SocketMessage msg) {
     if (msg.content != NULL)
         free(msg.content);
     if (msg.name != NULL)

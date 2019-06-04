@@ -23,7 +23,7 @@ SocketMessage getMessage(void);
 
 void deleteMessage(SocketMessage);
 
-void send_msg(SocketMessage);
+void sendMessage(SocketMessage);
 
 void sendEmptyMessage(SocketMessageType);
 
@@ -144,7 +144,7 @@ void init(char *n, char *variant, char *address) {
     sendEmptyMessage(REGISTER);
 }
 
-void send_msg(SocketMessage msg) {
+void sendMessage(SocketMessage msg) {
     ssize_t head_size = sizeof(msg.type) + sizeof(msg.size) + sizeof(msg.nameSize) + sizeof(msg.id);
     ssize_t size = head_size + msg.size + 1 + msg.nameSize + 1;
     int8_t *buff = malloc(size);
@@ -165,14 +165,14 @@ void send_msg(SocketMessage msg) {
     free(buff);
 }
 
-void sendEmptyMessage(SocketMessageType) {
+void sendEmptyMessage(SocketMessageType type) {
     SocketMessage msg = {type, 0, strlen(name), 0, NULL, name};
-    send_msg(msg);
+    sendMessage(msg);
 };
 
 void sendDoneMessage(int id, char *content) {
     SocketMessage msg = {WORK_DONE, strlen(content), strlen(name), id, content, name};
-    send_msg(msg);
+    sendMessage(msg);
 }
 
 SocketMessage getMessage(void) {
@@ -215,7 +215,7 @@ SocketMessage getMessage(void) {
     return msg;
 }
 
-void deleteMessage(SocketMessage) {
+void deleteMessage(SocketMessage msg) {
     if (msg.content != NULL)
         free(msg.content);
     if (msg.name != NULL)
