@@ -160,11 +160,9 @@ void init(char *connection_type, char *server_ip_path, char *port) {
     sigemptyset(&act.sa_mask);
     act.sa_flags = 0;
     sigaction(SIGINT, &act, NULL);
-    int conn_type;
 
     if (strcmp("WEB", connection_type) == 0) {
-        conn_type = WEB;
-        uint32_t ip = inet_addr(server_ip_path);
+        inet_addr(server_ip_path);
         uint16_t port_num = (uint16_t) atoi(port);
         if (port_num < 1024 || port_num > 65535) {
             raise_error("wrong port");
@@ -183,8 +181,6 @@ void init(char *connection_type, char *server_ip_path, char *port) {
         printf("CONNECTED TO WEB \n");
 
     } else if (strcmp("LOCAL", connection_type) == 0) {
-        conn_type = LOCAL;
-
         char *unix_path = server_ip_path;
         //todo -> check len of unix_path
         struct sockaddr_un local_address;
