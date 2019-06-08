@@ -50,6 +50,8 @@ size_t read_whole_file(const char *file_name, char *buffer) {
     return read_size;
 }
 
+int currentClient = 0;
+
 void handle_signal(int);
 
 void init(char *, char *);
@@ -197,6 +199,10 @@ void *handle_terminal(void *arg) {
             }
         }
         i = index;
+
+        i = currentClient%clients_amount;
+        currentClient++;
+
         printf("Request sent to %s \n", clients[i].name);
         clients[i].reserved++;
         send_msg(REQUEST, sizeof(req), &req, i);

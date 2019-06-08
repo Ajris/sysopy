@@ -95,6 +95,7 @@ pthread_t command;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 Client clients[CLIENT_MAX];
 int clients_amount = 0;
+int currentClient = 0;
 
 
 int main(int argc, char *argv[]) {
@@ -172,7 +173,8 @@ void *handler_terminal(void *arg) {
             }
         }
 
-        i = index;
+        i = currentClient%clients_amount;
+        currentClient++;
         clients[i].reserved++;
         printf("Request sent to %s \n", clients[i].name);
         int socket = clients[i].connect_type == WEB ? web_socket : local_socket;
