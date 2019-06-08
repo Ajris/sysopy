@@ -1,356 +1,375 @@
-#include "utils.h"
+//
+// Created by przjab98 on 31.05.19.
+//
 
-int un_sock;
-int web_sock;
-int epoll;
-char *un_path;
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <pthread.h>
+#include <sys/un.h>
+#include <sys/epoll.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <signal.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <arpa/inet.h>
+#include "common.h"
 
-uint64_t id;
 
-pthread_mutex_t clientMutex = PTHREAD_MUTEX_INITIALIZER;
-Client clients[MAX_CLIENTS];
+#define INPUT_BUFFER_SIZE 256
 
-pthread_t pinger;
-pthread_t commander;
+size_t get_file_size(const char *file_name) {
+    int fd;
+    if ((fd = open(file_name, O_RDONLY)) == -1) {
+        fprintf(stderr, "Unable to open file for size \n");
+        return (size_t) -1;
+    }
+    struct stat stats;
+    fstat(fd, &stats);
+    size_t size = (size_t) stats.st_size;
+    close(fd);
+    return size;
+}
+
+size_t read_whole_file(const char *file_name, char *buffer) {
+    size_t size = get_file_size(file_name);
+    if (size == -1) {
+        return size;
+    }
+    FILE *file;
+    if ((file = fopen(file_name, "r")) == NULL) {
+        fprintf(stderr, "Unable to open file \n");
+        return (size_t) -1;
+    }
+    size_t read_size;
+    if ((read_size = fread(buffer, sizeof(char), size, file)) != size) {
+        fprintf(stderr, "Unable to read file\n");
+        return (size_t) -1;
+    }
+    fclose(file);
+    return read_size;
+}
+
+void handle_signal(int);
 
 void init(char *, char *);
 
-void *terminalHandler(void *);
+void handle_message(int);
 
-void *pingerHandler(void *);
+void register_client(int socket, message_t msg, struct sockaddr *sockaddr, socklen_t socklen);
 
-void handleRegistration(int);
+void unregister_client(char *);
 
-void handleMessage(int);
+void clean();
 
-void sendMessage(int sock, SocketMessage msg);
+void *ping_clients(void *);
 
-void sendEmptyMessage(int, SocketMessageType);
+void *handler_terminal(void *);
 
-void deleteClient(int);
+void delete_client(int);
 
-void deleteSocket(int);
+int in(void *const a, void *const pbase, size_t total_elems, size_t size, __compar_fn_t cmp) {
+    char *base_ptr = (char *) pbase;
+    if (total_elems > 0) {
+        for (int i = 0; i < total_elems; ++i) {
+            if ((*cmp)(a, (void *) (base_ptr + i * size)) == 0) return i;
+        }
+    }
+    return -1;
+}
 
-int getClientByName(char *);
+int cmp_name(char *name, Client *client) {
+    return strcmp(name, client->name);
+}
 
-SocketMessage getMessage(int);
+int web_socket;
+int local_socket;
+int epoll;
+char *local_path;
+int id = 0;
+pthread_t ping;
+pthread_t command;
 
-void deleteMessage(SocketMessage);
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+Client clients[CLIENT_MAX];
+int clients_amount = 0;
 
-void handleINT(int);
-
-void cleanup(void);
 
 int main(int argc, char *argv[]) {
+    srand(time(NULL));
     if (argc != 3)
-        printError("PORT || UNIX PATH");
+        raise_error("\nUsage: %s <port number> <unix path>\n");
+    if (atexit(clean) == -1)
+        raise_error(" Could not set AtExit\n");
 
     init(argv[1], argv[2]);
 
     struct epoll_event event;
-    while (1) {
+    int x = 1;
+    while (x) {
         if (epoll_wait(epoll, &event, 1, -1) == -1)
-            printError("epoll waiting failed");
+            raise_error(" epoll_wait failed\n");
+        handle_message(event.data.fd);
 
-        if (event.data.fd < 0)
-            handleRegistration(-event.data.fd);
-        else
-            handleMessage(event.data.fd);
     }
+
 }
 
-void init(char *port, char *unix_path) {
-    atexit(cleanup);
-    signal(SIGINT, handleINT);
-
-    uint16_t port_num = (uint16_t) atoi(port);
-    if (port_num < 1024)
-        printError("Wrong port num");
-    un_path = unix_path;
-    if (strlen(un_path) < 1 || strlen(un_path) > UNIX_PATH_MAX)
-        printError("Wrong socket path");
-
-    struct sockaddr_in web_addr;
-    memset(&web_addr, 0, sizeof(struct sockaddr_in));
-    web_addr.sin_family = AF_INET;
-    web_addr.sin_addr.s_addr = inet_addr("0.0.0.0");
-    web_addr.sin_port = htons(port_num);
-
-    if ((web_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-        printError("Coudlnt create socket");
-
-    if (bind(web_sock, (const struct sockaddr *) &web_addr, sizeof(web_addr)))
-        printError("Couldnt bind socket");
-
-    if (listen(web_sock, 64) == -1)
-        printError("Coudlnt listen");
-
-    struct sockaddr_un un_addr;
-    un_addr.sun_family = AF_UNIX;
-
-    sprintf(un_addr.sun_path, "%s", un_path);
-
-    if ((un_sock = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
-        printError("error socket");
-
-    if (bind(un_sock, (const struct sockaddr *) &un_addr, sizeof(un_addr)))
-        printError("error bind");
-
-    if (listen(un_sock, MAX_CLIENTS) == -1)
-        printError("error listen");
-
-    // init epoll
-    struct epoll_event event;
-    event.events = EPOLLIN | EPOLLPRI;
-
-    if ((epoll = epoll_create1(0)) == -1)
-        printError("error epoll");
-
-    event.data.fd = -web_sock;
-    if (epoll_ctl(epoll, EPOLL_CTL_ADD, web_sock, &event) == -1)
-        printError("error epoll");
-
-    event.data.fd = -un_sock;
-    if (epoll_ctl(epoll, EPOLL_CTL_ADD, un_sock, &event) == -1)
-        printError("error epoll");
-
-    // start threads
-    if (pthread_create(&commander, NULL, terminalHandler, NULL) != 0)
-        printError("error creating thread");
-    if (pthread_create(&pinger, NULL, pingerHandler, NULL) != 0)
-        printError("error creating thread");
-}
-
-void *terminalHandler(void *params) {
-    char buffer[1024];
-    while (1) {
-        int min_i = MAX_CLIENTS;
-        int min = 1000000;
-
-        // read command
-        scanf("%1023s", buffer);
-
-        // open file
-        FILE *file = fopen(buffer, "r");
-        if (file == NULL) {
-            continue;
-        }
-        fseek(file, 0, SEEK_END);
-        size_t size = ftell(file);
-        fseek(file, 0L, SEEK_SET);
-
-        char *file_buff = malloc(size + 1);
-        if (file_buff == NULL) {
-            continue;
-        }
-
-        file_buff[size] = '\0';
-
-        if (fread(file_buff, 1, size, file) != size) {
-            fprintf(stderr, "Could not read file\n");
-            free(file_buff);
-            continue;
-        }
-
-        fclose(file);
-
-        // send request
-        pthread_mutex_lock(&clientMutex);
-        for (int i = 0; i < MAX_CLIENTS; i++) {
-            if (!clients[i].fd) continue;
-            if (min > clients[i].working) {
-                min_i = i;
-                min = clients[i].working;
-            }
-        }
-
-        if (min_i < MAX_CLIENTS) {
-            SocketMessage msg = {WORK, strlen(file_buff) + 1, 0, ++id, file_buff, NULL};
-            printf("JOB %lu SEND TO %s\n", id, clients[min_i].name);
-            sendMessage(clients[min_i].fd, msg);
-            clients[min_i].working++;
-        } else {
-            fprintf(stderr, "No clients connected\n");
-        }
-        pthread_mutex_unlock(&clientMutex);
-
-        free(file_buff);
-    }
-}
-
-void *pingerHandler(void *params) {
-    while (1) {
-        pthread_mutex_lock(&clientMutex);
-        for (int i = 0; i < MAX_CLIENTS; i++) {
-            if (clients[i].fd == 0) continue;
-            if (clients[i].inactive) {
-                deleteClient(i);
+void *ping_clients(void *arg) {
+    uint8_t message_type = PING;
+    printf("PING \n");
+    int x = 1;
+    while (x) {
+        pthread_mutex_lock(&mutex);
+        for (int i = 0; i < clients_amount; ++i) {
+            if (clients[i].active_counter != 0) {
+                printf("Client \"%s\" do not respond. Removing from registered clients\n", clients[i].name);
+                delete_client(i--);
             } else {
-                clients[i].inactive = 1;
-                sendEmptyMessage(clients[i].fd, PING);
+                int socket = clients[i].connect_type == WEB ? web_socket : local_socket;
+                if (sendto(socket, &message_type, 1, 0, clients[i].sockaddr, clients[i].socklen) != 1)
+                    raise_error(" Could not PING client");
+                clients[i].active_counter++;
             }
         }
-        pthread_mutex_unlock(&clientMutex);
-        sleep(10);
+        pthread_mutex_unlock(&mutex);
+        sleep(5);
     }
+    return NULL;
 }
 
-void handleRegistration(int sock) {
-    puts("Client registered");
-    int client = accept(sock, NULL, NULL);
-    if (client == -1) printError("");
-    struct epoll_event event;
-    event.events = EPOLLIN | EPOLLPRI;
-    event.data.fd = client;
-
-    if (epoll_ctl(epoll, EPOLL_CTL_ADD, client, &event) == -1)
-        printError("");
-}
-
-void handleMessage(int sock) {
-    SocketMessage msg = getMessage(sock);
-    pthread_mutex_lock(&clientMutex);
-
-    switch (msg.type) {
-        case REGISTER: {
-            SocketMessageType reply = OK;
-            int i;
-            i = getClientByName(msg.name);
-            if (i < MAX_CLIENTS)
-                reply = NAME_TAKEN;
-
-            for (i = 0; i < MAX_CLIENTS && clients[i].fd != 0; i++);
-
-            if (i == MAX_CLIENTS)
-                reply = FULL;
-
-            if (reply != OK) {
-                sendEmptyMessage(sock, reply);
-                deleteSocket(sock);
-                break;
+void *handler_terminal(void *arg) {
+    request_t req;
+    int true = 1;
+    while (true) {
+        char buffer[INPUT_BUFFER_SIZE];
+        printf("Enter command: \n");
+        fgets(buffer, INPUT_BUFFER_SIZE, stdin);
+        memset(req.text, 0, sizeof(req.text));
+        sscanf(buffer, "%s", buffer);
+        uint8_t message_type = REQUEST;
+        int status = read_whole_file(buffer, req.text);
+        if (strlen(req.text) <= 0) {
+            printf("cannot send empty file \n");
+            continue;
+        }
+        if (status < 0) {
+            printf("WRONG FILE \n");
+            continue;
+        }
+        id++;
+        printf("REQUEST ID: %d \n", id);
+        req.ID = id;
+        int i = 0;
+        int min = 90000;
+        int index = 0;
+        for (i = 0; i < clients_amount; i++) {
+            if (min > clients[i].reserved) {
+                min = clients[i].reserved;
+                index = i;
             }
+        }
 
-            clients[i].fd = sock;
-            clients[i].name = malloc(msg.size + 1);
-            if (clients[i].name == NULL) printError("");
-            strcpy(clients[i].name, msg.name);
-            clients[i].working = 0;
-            clients[i].inactive = 0;
+        i = index;
+        clients[i].reserved++;
+        printf("Request sent to %s \n", clients[i].name);
+        int socket = clients[i].connect_type == WEB ? web_socket : local_socket;
+        if (sendto(socket, &message_type, 1, 0, clients[i].sockaddr, clients[i].socklen) != 1) {
+            raise_error("cannot sendto");
+        }
+        if (sendto(socket, &req, sizeof(request_t), 0, clients[i].sockaddr, clients[i].socklen) !=
+            sizeof(request_t)) {
+            raise_error("cannot sendto");
+        }
 
-            sendEmptyMessage(sock, OK);
+    }
+    return NULL;
+}
+
+void handle_message(int socket) {
+    struct sockaddr *sockaddr = malloc(sizeof(struct sockaddr));
+    socklen_t socklen = sizeof(struct sockaddr);
+    message_t msg;
+
+    if (recvfrom(socket, &msg, sizeof(message_t), 0, sockaddr, &socklen) != sizeof(message_t))
+        raise_error("Could not receive new message\n");
+    switch (msg.message_type) {
+        case REGISTER: {
+            register_client(socket, msg, sockaddr, socklen);
             break;
         }
         case UNREGISTER: {
-            int i;
-            for (i = 0; i < MAX_CLIENTS && strcmp(clients[i].name, msg.name) != 0; i++);
-            if (i == MAX_CLIENTS) break;
-            deleteClient(i);
+            unregister_client(msg.name);
             break;
         }
-        case WORK_DONE: {
-            int i = getClientByName(msg.name);
-            if (i < MAX_CLIENTS) {
-                clients[i].inactive = 0;
-                clients[i].working--;
+        case RESULT: {
+
+            int i;
+            for (i = 0; i < clients_amount; i++) {
+                if (strcmp(clients[i].name, msg.name) == 0) {
+                    //clients[i].reserved--;
+                    clients[i].active_counter = 0;
+                }
             }
-            printf("JOB %lu DONE BY %s:\n%s\n", msg.id, (char *) msg.name, (char *) msg.content);
+            printf("RESULT: %s \n", msg.value);
+            printf("from: %s \n", msg.name);
             break;
         }
         case PONG: {
-            int i = getClientByName(msg.name);
-            if (i < MAX_CLIENTS)
-                clients[i].inactive = 0;
+            pthread_mutex_lock(&mutex);
+            int i = in(msg.name, clients, (size_t) clients_amount, sizeof(Client), (__compar_fn_t) cmp_name);
+            if (i >= 0) clients[i].active_counter = clients[i].active_counter == 0 ? 0 : clients[i].active_counter - 1;
+            pthread_mutex_unlock(&mutex);
+            break;
         }
-    }
-
-    pthread_mutex_unlock(&clientMutex);
-
-    deleteMessage(msg);
-}
-
-void deleteClient(int i) {
-    deleteSocket(clients[i].fd);
-    clients[i].fd = 0;
-    clients[i].name = NULL;
-    clients[i].working = 0;
-    clients[i].inactive = 0;
-}
-
-int getClientByName(char *name) {
-    int i;
-    for (i = 0; i < MAX_CLIENTS; i++) {
-        if (clients[i].fd == 0) continue;
-        if (strcmp(clients[i].name, name) == 0)
+        default:
+            //printf("Unknown message type\n");
             break;
     }
-    return i;
+
 }
 
-void deleteSocket(int sock) {
-    epoll_ctl(epoll, EPOLL_CTL_DEL, sock, NULL);
-    shutdown(sock, SHUT_RDWR);
-    close(sock);
-}
-
-void sendMessage(int sock, SocketMessage msg) {
-    write(sock, &msg.type, sizeof(msg.type));
-    write(sock, &msg.size, sizeof(msg.size));
-    write(sock, &msg.nameSize, sizeof(msg.nameSize));
-    write(sock, &msg.id, sizeof(msg.id));
-    if (msg.size > 0) write(sock, msg.content, msg.size);
-    if (msg.nameSize > 0) write(sock, msg.name, msg.nameSize);
-}
-
-void sendEmptyMessage(int sock, SocketMessageType reply) {
-    SocketMessage msg = {reply, 0, 0, 0, NULL, NULL};
-    sendMessage(sock, msg);
-};
-
-SocketMessage getMessage(int sock) {
-    SocketMessage msg;
-    if (read(sock, &msg.type, sizeof(msg.type)) != sizeof(msg.type))
-        printError("Uknown message from client");
-    if (read(sock, &msg.size, sizeof(msg.size)) != sizeof(msg.size))
-        printError("Uknown message from client");
-    if (read(sock, &msg.nameSize, sizeof(msg.nameSize)) != sizeof(msg.nameSize))
-        printError("Uknown message from client");
-    if (read(sock, &msg.id, sizeof(msg.id)) != sizeof(msg.id))
-        printError("Uknown message from client");
-    if (msg.size > 0) {
-        msg.content = malloc(msg.size + 1);
-        if (msg.content == NULL) printError("");
-        if (read(sock, msg.content, msg.size) != msg.size) {
-            printError("Uknown message from client");
-        }
+void register_client(int socket, message_t msg, struct sockaddr *sockaddr, socklen_t socklen) {
+    uint8_t message_type;
+    pthread_mutex_lock(&mutex);
+    if (clients_amount == CLIENT_MAX) {
+        message_type = FAILSIZE;
+        if (sendto(socket, &message_type, 1, 0, sockaddr, socklen) != 1)
+            raise_error(" Could not write FAILSIZE message to client \"%s\"\n");
+        free(sockaddr);
     } else {
-        msg.content = NULL;
-    }
-    if (msg.nameSize > 0) {
-        msg.name = malloc(msg.nameSize + 1);
-        if (msg.name == NULL) printError("");
-        if (read(sock, msg.name, msg.nameSize) != msg.nameSize) {
-            printError("Uknown message from client");
+        int exists = in(msg.name, clients, (size_t) clients_amount, sizeof(Client), (__compar_fn_t) cmp_name);
+        if (exists != -1) {
+            message_type = WRONGNAME;
+            if (sendto(socket, &message_type, 1, 0, sockaddr, socklen) != 1)
+                raise_error(" Could not write WRONGNAME message to client \"%s\"\n");
+            free(sockaddr);
+        } else {
+            printf("REGISTERING \n");
+            clients[clients_amount].name = malloc(strlen(msg.name) + 1);
+            clients[clients_amount].connect_type = msg.connect_type;
+            clients[clients_amount].active_counter = 0;
+            clients[clients_amount].reserved = 0;
+            clients[clients_amount].socklen = socklen;
+            clients[clients_amount].sockaddr = malloc(sizeof(struct sockaddr_un));
+            memcpy(clients[clients_amount].sockaddr, sockaddr, socklen);
+            message_type = SUCCESS;
+
+            strcpy(clients[clients_amount++].name, msg.name);
+            if (sendto(socket, &message_type, 1, 0, sockaddr, socklen) != 1)
+                raise_error(" Could not write SUCCESS message to client \"%s\"\n");
         }
-    } else {
-        msg.name = NULL;
     }
-    return msg;
+    pthread_mutex_unlock(&mutex);
 }
 
-void deleteMessage(SocketMessage msg) {
-    if (msg.content != NULL)
-        free(msg.content);
-    if (msg.name != NULL)
-        free(msg.name);
+void unregister_client(char *client_name) {
+    pthread_mutex_lock(&mutex);
+    int i = in(client_name, clients, (size_t) clients_amount, sizeof(Client), (__compar_fn_t) cmp_name);
+    if (i >= 0) {
+        delete_client(i);
+        printf("Client \"%s\" unregistered\n", client_name);
+    }
+    pthread_mutex_unlock(&mutex);
 }
 
-void handleINT(int signo) {
-    exit(0);
+void delete_client(int i) {
+    free(clients[i].sockaddr);
+    free(clients[i].name);
+
+    clients_amount--;
+    for (int j = i; j < clients_amount; ++j)
+        clients[j] = clients[j + 1];
+
 }
 
-void cleanup(void) {
-    close(web_sock);
-    close(un_sock);
-    unlink(un_path);
-    close(epoll);
+void handle_signal(int signo) {
+    printf("\nSIGINT\n");
+    exit(1);
+}
+
+void init(char *port, char *path) {
+
+    struct sigaction act;
+    act.sa_handler = handle_signal;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = 0;
+    sigaction(SIGINT, &act, NULL);
+
+    int i;
+    for (i = 0; i < CLIENT_MAX; i++) {
+        clients[i].reserved = -1;
+    }
+
+    uint16_t port_num = (uint16_t) atoi(port);
+    local_path = path;
+
+    //******************** WEB ***********************
+    struct sockaddr_in web_address;
+    memset(&web_address, 0, sizeof(struct sockaddr_in));
+    web_address.sin_family = AF_INET;
+    web_address.sin_addr.s_addr = htonl(INADDR_ANY);
+    web_address.sin_port = htons(port_num);
+
+    if ((web_socket = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+        raise_error(" Could not create web socket\n");
+
+    if (bind(web_socket, (const struct sockaddr *) &web_address, sizeof(web_address)))
+        raise_error(" Could not bind web socket\n");
+
+    //******************* LOCAL **********************
+    struct sockaddr_un local_address;
+    local_address.sun_family = AF_UNIX;
+    sprintf(local_address.sun_path, "%s", local_path);
+
+    if ((local_socket = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0)
+        raise_error(" Could not create local socket\n");
+
+    if (bind(local_socket, (const struct sockaddr *) &local_address, sizeof(local_address)))
+        raise_error(" Could not bind local socket\n");
+
+    //****************** EPOLL ***********************
+    struct epoll_event event;
+    event.events = EPOLLIN | EPOLLPRI;
+    if ((epoll = epoll_create1(0)) == -1)
+        raise_error(" Could not create epoll\n");
+    event.data.fd = web_socket;
+    if (epoll_ctl(epoll, EPOLL_CTL_ADD, web_socket, &event) == -1)
+        raise_error(" Could not add Web Socket to epoll\n");
+    event.data.fd = local_socket;
+    if (epoll_ctl(epoll, EPOLL_CTL_ADD, local_socket, &event) == -1)
+        raise_error(" Could not add Local Socket to epoll\n");
+
+    //****************** THREADS ***********************
+    if (pthread_create(&ping, NULL, ping_clients, NULL) != 0)
+        raise_error(" Could not create Pinger Thread");
+    if (pthread_create(&command, NULL, handler_terminal, NULL) != 0)
+        raise_error(" Could not create Commander Thread");
+}
+
+void clean() {
+
+    pthread_cancel(ping);
+    pthread_cancel(command);
+    int i;
+    for (i = 0; i < clients_amount; i++) {
+        if (clients[i].reserved >= 0) {
+            uint8_t message_type = END;
+            int socket = clients[i].connect_type == WEB ? web_socket : local_socket;
+            if (sendto(socket, &message_type, 1, 0, clients[i].sockaddr, clients[i].socklen) != 1) {
+                raise_error("cannot sendto");
+            }
+        }
+    }
+
+    if (close(web_socket) == -1)
+        fprintf(stderr, " Could not close Web Socket\n");
+    if (close(local_socket) == -1)
+        fprintf(stderr, " Could not close Local Socket\n");
+    if (unlink(local_path) == -1)
+        fprintf(stderr, " Could not unlink Unix Path\n");
+    if (close(epoll) == -1)
+        fprintf(stderr, " Could not close epoll\n");
 }

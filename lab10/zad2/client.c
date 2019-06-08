@@ -1,234 +1,210 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <signal.h>
+#include <string.h>
+#include "common.h"
+#include <netinet/in.h>
+#include <sys/un.h>
+#include <endian.h>
+#include <arpa/inet.h>
 #include <pthread.h>
 
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/epoll.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/un.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
 
-#include "utils.h"
-
-int sock;
 char *name;
+int client_socket;
+int ID = 0;
 
-void init(char *, char *, char *);
+void init(char *connection_type, char *server_ip_path, char *port);
+void handle_message();
+void connect_to_server();
+void send_message(uint8_t message_type);
+void clean();
 
-SocketMessage getMessage(void);
-
-void deleteMessage(SocketMessage);
-
-void sendMessage(SocketMessage);
-
-void sendEmptyMessage(SocketMessageType);
-
-void sendDoneMessage(int, char *);
-
-void handleINT(int);
-
-void cleanup(void);
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char *argv[]) {
-    if (argc != 4) die("Pass: client name, variant (WEB/UNIX), address");
 
-    init(argv[1], argv[2], argv[3]);
+    name = argv[1];
+    char *connection_type = argv[2];
+    char *server_ip = argv[3];
+    char *port = NULL;
+    if (argc == 5) {
+        port = argv[4];
+    }
 
-    while (1) {
-        SocketMessage msg = getMessage();
+    init(connection_type, server_ip, port);
+    connect_to_server();
+    handle_message();
+    clean();
+    return 0;
+}
 
-        switch (msg.type) {
-            case OK: {
-                break;
-            }
-            case PING: {
-                sendEmptyMessage(PONG);
-                break;
-            }
-            case NAME_TAKEN:
-                die("Name is already taken");
-            case FULL:
-                die("Server is full");
-            case WORK: {
-                puts("Doing work...");
-                char *buffer = malloc(100 + 2 * msg.size);
-                if (buffer == NULL) die_errno();
-                sprintf(buffer, "echo '%s' | awk '{for(x=1;$x;++x)print $x}' | sort | uniq -c", (char *) msg.content);
-                FILE *result = popen(buffer, "r");
-                if (result == 0) {
-                    free(buffer);
-                    break;
+void* handle_request(void * arg) {
+
+    request_t* req_tmp = (request_t *)arg;
+    request_t req;
+    memset(req.text,0, sizeof(req.text));
+    strcpy(req.text,req_tmp->text);
+    int id = req_tmp ->ID;
+
+
+    char *buffer = malloc(100 + 2 * strlen(req.text));
+    char *buffer_res = malloc(100 + 2 * strlen(req.text));
+    sprintf(buffer, "echo '%s' | awk '{for(x=1;$x;++x)print $x}' | sort | uniq -c", (char *) req.text);
+    FILE *result = popen(buffer, "r");
+    int n = fread(buffer, 1, 99 + 2 * strlen(req.text), result);
+    buffer[n] = '\0';
+
+    int words_count = 1;
+    char *res = strtok(req.text, " ");
+    while (strtok(NULL, " ") && res) {
+        words_count++;
+    }
+
+    sprintf(buffer_res, "ID: %d sum: %d || %s",id, words_count, buffer);
+    printf("RES: %s\n", buffer);
+    //sleep(4);
+    pthread_mutex_lock(&mutex);
+    send_message(RESULT);
+    int len = strlen(buffer_res);
+    if (write(client_socket,&len, sizeof(int)) != sizeof(int))
+        raise_error(" Could not write message type");
+    if (write(client_socket, buffer_res, len) != len)
+        raise_error(" Could not write message type");
+    printf("RESULT SENT \n");
+    free(buffer);
+    free(buffer_res);
+    pthread_mutex_unlock(&mutex);
+    return NULL;
+}
+
+void send_message(uint8_t message_type) {
+    uint16_t message_size = (uint16_t) (strlen(name) + 1);
+    if (write(client_socket, &message_type, TYPE_SIZE) != TYPE_SIZE)
+        raise_error(" Could not write message type");
+    if (write(client_socket, &message_size, LEN_SIZE) != LEN_SIZE)
+        raise_error(" Could not write message size");
+    if (write(client_socket, name, message_size) != message_size)
+        raise_error(" Could not write name message");
+}
+
+void connect_to_server() {
+    send_message(REGISTER);
+
+    uint8_t message_type;
+    if (read(client_socket, &message_type, 1) != 1) raise_error("\n Could not read response message type\n");
+
+    switch (message_type) {
+        case WRONGNAME:
+            raise_error("Name already in use\n");
+        case FAILSIZE:
+            raise_error("Too many clients logged\n");
+        case SUCCESS:
+            printf("Logged\n");
+            break;
+        default:
+            raise_error("Impossible \n");
+    }
+}
+
+void handle_message() {
+    uint8_t message_type;
+    pthread_t thread;
+    int x = 1;
+    while (x) {
+        if (read(client_socket, &message_type, TYPE_SIZE) != TYPE_SIZE)
+            raise_error(" Could not read message type");
+        switch (message_type) {
+            case REQUEST:
+                //handle_request();
+                printf(" ");
+                uint16_t req_len;
+                if (read(client_socket, &req_len, 2) <= 0) {
+                    raise_error("cannot read length");
                 }
-                int n = fread(buffer, 1, 99 + 2 * msg.size, result);
-                buffer[n] = '\0';
-                puts("Work done...");
-                sendDoneMessage(msg.id, buffer);
-                free(buffer);
+
+                request_t req;
+                memset( req.text, '\0', sizeof(req.text));
+                if (read(client_socket, req.text, req_len) < 0) {
+                    raise_error("cannot read whole text");
+                }
+
+                pthread_create(&thread, NULL, handle_request, &req);
+                pthread_detach(thread);
                 break;
-            }
+            case PING:
+                //printf("HALKO \n");
+                pthread_mutex_lock(&mutex);
+                send_message(PONG);
+                pthread_mutex_unlock(&mutex);
+                break;
             default:
+                //printf("Unknown message type\n");
                 break;
         }
-
-        deleteMessage(msg);
     }
 }
 
-void init(char *n, char *variant, char *address) {
-    // register atexit
-    if (atexit(cleanup) == -1) die_errno();
+void handle_signals(int signo) {
+    send_message(UNREGISTER);
+    //printf("KILLED BY SIGNAL \n");
+    exit(1);
+}
 
-    // register int handler
-    if (signal(SIGINT, handleINT) == SIG_ERR)
-        show_errno();
+void init(char *connection_type, char *server_ip_path, char *port) {
 
-    // set name
-    name = n;
+    struct sigaction act;
+    act.sa_handler = handle_signals;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = 0;
+    sigaction(SIGINT, &act, NULL);
+    int conn_type;
 
-    // parse address
-    if (strcmp("WEB", variant) == 0) {
-        strtok(address, ":");
-        char *port = strtok(NULL, ":");
-        if (port == NULL) die("Specify a port");
+    if (strcmp("WEB", connection_type) == 0) {
+        conn_type = WEB;
+        uint32_t ip = inet_addr(server_ip_path);
+        uint16_t port_num = (uint16_t) atoi(port);
+        if (port_num < 1024 || port_num > 65535) {
+            raise_error("wrong port");
+        }
+        struct sockaddr_in web_address;
+        memset(&web_address, 0, sizeof(struct sockaddr_in));
+        web_address.sin_family = AF_INET;
+        web_address.sin_addr.s_addr = htonl(INADDR_ANY); //inet_addr(server_ip_path);//inet_addr("192.168.0.66"); //htonl(ip);
+        web_address.sin_port = htons(port_num);
+        if ((client_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+            raise_error("socket");
+        }
+        if (connect(client_socket, (const struct sockaddr *) &web_address, sizeof(web_address)) == -1) {
+            raise_error("connect");
+        }
+        printf("CONNECTED TO WEB \n");
 
-        uint32_t in_addr = inet_addr(address);
-        if (in_addr == INADDR_NONE) die("Invalid address");
+    } else if (strcmp("LOCAL", connection_type) == 0) {
+        conn_type = LOCAL;
 
-        uint16_t port_num = (uint16_t) parse_pos_int(port);
-        if (port_num < 1024)
-            die("Invalid port number");
+        char *unix_path = server_ip_path;
+        //todo -> check len of unix_path
+        struct sockaddr_un local_address;
+        local_address.sun_family = AF_UNIX;
+        snprintf(local_address.sun_path, MAX_PATH, "%s", unix_path);
+        if ((client_socket = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+            raise_error("\n Could not create local socket\n");
 
-        if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
-            die_errno();
+        if (connect(client_socket, (const struct sockaddr *) &local_address, sizeof(local_address)) == -1)
+            raise_error("\n Could not connect to local socket\n");
 
-        struct sockaddr_in web_addr;
-        memset(&web_addr, 0, sizeof(struct sockaddr_in));
-
-        web_addr.sin_family = AF_INET;
-        web_addr.sin_addr.s_addr = in_addr;
-        web_addr.sin_port = htons(port_num);
-
-        if (connect(sock, (const struct sockaddr *) &web_addr, sizeof(web_addr)) == -1)
-            die_errno();
-    } else if (strcmp("UNIX", variant) == 0) {
-        char *un_path = address;
-
-        if (strlen(un_path) < 1 || strlen(un_path) > UNIX_PATH_MAX)
-            die("Invalid unix socket path");
-
-        struct sockaddr_un un_addr;
-        un_addr.sun_family = AF_UNIX;
-        snprintf(un_addr.sun_path, UNIX_PATH_MAX, "%s", un_path);
-
-        struct sockaddr_un client_addr;
-        memset(&client_addr, 0, sizeof(client_addr));
-        client_addr.sun_family = AF_UNIX;
-        snprintf(client_addr.sun_path, UNIX_PATH_MAX, "%s", name);
-
-        if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1)
-            die_errno();
-
-        if (bind(sock, (const struct sockaddr *) &client_addr, sizeof(client_addr)) == -1)
-            die_errno();
-
-        if (connect(sock, (const struct sockaddr *) &un_addr, sizeof(un_addr)) == -1)
-            die_errno();
     } else {
-        die("Unknown variant");
+        raise_error("wrong type of argument");
     }
-
-    sendEmptyMessage(REGISTER);
 }
 
-void sendMessage(SocketMessage msg) {
-    ssize_t head_size = sizeof(msg.type) + sizeof(msg.size) + sizeof(msg.nameSize) + sizeof(msg.id);
-    ssize_t size = head_size + msg.size + 1 + msg.nameSize + 1;
-    int8_t *buff = malloc(size);
-    if (buff == NULL) die_errno();
-
-    memcpy(buff, &msg.type, sizeof(msg.type));
-    memcpy(buff + sizeof(msg.type), &msg.size, sizeof(msg.size));
-    memcpy(buff + sizeof(msg.type) + sizeof(msg.size), &msg.nameSize, sizeof(msg.nameSize));
-    memcpy(buff + sizeof(msg.type) + sizeof(msg.size) + sizeof(msg.nameSize), &msg.id, sizeof(msg.id));
-
-    if (msg.size > 0 && msg.content != NULL)
-        memcpy(buff + head_size, msg.content, msg.size + 1);
-    if (msg.nameSize > 0 && msg.name != NULL)
-        memcpy(buff + head_size + msg.size + 1, msg.name, msg.nameSize + 1);
-
-    if (write(sock, buff, size) != size) die_errno();
-
-    free(buff);
-}
-
-void sendEmptyMessage(SocketMessageType type) {
-    SocketMessage msg = {type, 0, strlen(name), 0, NULL, name};
-    sendMessage(msg);
-};
-
-void sendDoneMessage(int id, char *content) {
-    SocketMessage msg = {WORK_DONE, strlen(content), strlen(name), id, content, name};
-    sendMessage(msg);
-}
-
-SocketMessage getMessage(void) {
-    SocketMessage msg;
-    ssize_t head_size = sizeof(msg.type) + sizeof(msg.size) + sizeof(msg.nameSize) + sizeof(msg.id);
-    int8_t buff[head_size];
-    if (recv(sock, buff, head_size, MSG_PEEK) < head_size)
-        die("Uknown message from server");
-
-    memcpy(&msg.type, buff, sizeof(msg.type));
-    memcpy(&msg.size, buff + sizeof(msg.type), sizeof(msg.size));
-    memcpy(&msg.nameSize, buff + sizeof(msg.type) + sizeof(msg.size), sizeof(msg.nameSize));
-    memcpy(&msg.id, buff + sizeof(msg.type) + sizeof(msg.size) + sizeof(msg.nameSize), sizeof(msg.id));
-
-    ssize_t size = head_size + msg.size + 1 + msg.nameSize + 1;
-    int8_t *buffer = malloc(size);
-
-    if (recv(sock, buffer, size, 0) < size) {
-        die("Uknown message from server");
-    }
-
-    if (msg.size > 0) {
-        msg.content = malloc(msg.size + 1);
-        if (msg.content == NULL) die_errno();
-        memcpy(msg.content, buffer + head_size, msg.size + 1);
-    } else {
-        msg.content = NULL;
-    }
-
-    if (msg.nameSize > 0) {
-        msg.name = malloc(msg.nameSize + 1);
-        if (msg.name == NULL) die_errno();
-        memcpy(msg.name, buffer + head_size + msg.size + 1, msg.nameSize + 1);
-    } else {
-        msg.name = NULL;
-    }
-
-    free(buffer);
-
-    return msg;
-}
-
-void deleteMessage(SocketMessage msg) {
-    if (msg.content != NULL)
-        free(msg.content);
-    if (msg.name != NULL)
-        free(msg.name);
-}
-
-void handleINT(int signo) {
-    exit(0);
-}
-
-void cleanup(void) {
-    sendEmptyMessage(UNREGISTER);
-    unlink(name);
-    shutdown(sock, SHUT_RDWR);
-    close(sock);
+void clean() {
+    send_message(UNREGISTER);
+    if (shutdown(client_socket, SHUT_RDWR) == -1)
+        fprintf(stderr, "\n Could not shutdown Socket\n");
+    if (close(client_socket) == -1)
+        fprintf(stderr, "\n Could not close Socket\n");
 }
