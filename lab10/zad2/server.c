@@ -18,7 +18,7 @@
 #include "common.h"
 
 #define MAX_BUFFER_SIZE 256
-size_t get_file_size(const char *file_name) {
+size_t getFileSize(const char *file_name) {
     int fd;
     if ((fd = open(file_name, O_RDONLY)) == -1) {
         fprintf(stderr, "Unable to open file for size \n");
@@ -32,7 +32,7 @@ size_t get_file_size(const char *file_name) {
 }
 
 size_t read_whole_file(const char *file_name, char *buffer) {
-    size_t size = get_file_size(file_name);
+    size_t size = getFileSize(file_name);
     if (size == -1) {
         return size;
     }
@@ -149,7 +149,7 @@ void *ping_routine(void *arg) {
     return NULL;
 }
 
-void send_msg(int type, int len, request_t *req, int i) {
+void send_msg(int type, int len, Request *req, int i) {
     if (write(clients[i].fd, &type, 1) != 1) {
         raise_error("cannot send");
     }
@@ -173,7 +173,7 @@ void *handle_terminal(void *arg) {
         char file_buffer[MAX_MSG_SIZE];
         memset( file_buffer, '\0', sizeof(char)*MAX_MSG_SIZE);
         sscanf(buffer, "%s", file_buffer);
-        request_t req;
+        Request req;
         id++;
         printf("REQUEST ID: %d \n", id);
         printf("%s \n", file_buffer);

@@ -1,17 +1,26 @@
-//
-// Created by przjab98 on 31.05.19.
-//
-
 #ifndef SOCKETS_COMMON_H
 #define SOCKETS_COMMON_H
 
 #include <stdint.h>
-#include <unistd.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <pthread.h>
+#include <sys/un.h>
+#include <sys/epoll.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <signal.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <arpa/inet.h>
 
 #define MAX_PATH 108
 #define CLIENT_MAX 12
-typedef enum message_type {
+
+typedef enum MessageType {
     REGISTER = 0,
     UNREGISTER = 1,
     SUCCESS = 2,
@@ -22,39 +31,38 @@ typedef enum message_type {
     PING = 7,
     PONG = 8,
     END = 9
-} message_type;
+} MessageType;
 
-typedef enum connect_type {
+typedef enum ConnectionType {
     LOCAL = 0,
     WEB = 1
-} connect_type;
+} ConnectionType;
 
-typedef struct message_t {
-    enum message_type message_type;
+typedef struct Message {
+    enum MessageType messageType;
     char name[64];
-    enum connect_type connect_type;
+    enum ConnectionType connectionType;
     char value[10240];
 
-} message_t;
+} Message;
 
-typedef struct request_t{
+typedef struct Request{
     char text[10240];
     int ID;
-} request_t;
+} Request;
 
 typedef struct Client {
     char *name;
     int active_counter;
-    enum connect_type connect_type;
+    enum ConnectionType connectionType;
     struct sockaddr* sockaddr;
     int reserved;
     socklen_t socklen;
 } Client;
 
-
-void raise_error(char* message){
-    fprintf(stderr, "%s :: %s \n", message, strerror(errno));
+void printError(char* message) {
+    printf("ERROR: %s\n", message);
     exit(1);
 }
 
-#endif //SOCKETS_COMMON_H
+#endif

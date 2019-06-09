@@ -13,11 +13,11 @@
 
 
 char *name;
-int client_socket;
+int clientSocket;
 int ID = 0;
 
-void init(char *connection_type, char *server_ip_path, char *port);
-void handle_message();
+void initConnections(char *connectionType, char *serverIpPath, char *port);
+void handleMessage();
 void connect_to_server();
 void send_message(uint8_t message_type);
 void clean();
@@ -34,17 +34,17 @@ int main(int argc, char *argv[]) {
         port = argv[4];
     }
 
-    init(connection_type, server_ip, port);
+    initConnections(connection_type, server_ip, port);
     connect_to_server();
-    handle_message();
+    handleMessage();
     clean();
     return 0;
 }
 
-void* handle_request(void * arg) {
+void* handleTask(void *arg) {
 
-    request_t* req_tmp = (request_t *)arg;
-    request_t req;
+    Request* req_tmp = (Request *)arg;
+    Request req;
     memset(req.text,0, sizeof(req.text));
     strcpy(req.text,req_tmp->text);
     int id = req_tmp ->ID;
@@ -69,9 +69,9 @@ void* handle_request(void * arg) {
     pthread_mutex_lock(&mutex);
     send_message(RESULT);
     int len = strlen(buffer_res);
-    if (write(client_socket,&len, sizeof(int)) != sizeof(int))
+    if (write(clientSocket,&len, sizeof(int)) != sizeof(int))
         raise_error(" Could not write message type");
-    if (write(client_socket, buffer_res, len) != len)
+    if (write(clientSocket, buffer_res, len) != len)
         raise_error(" Could not write message type");
     printf("RESULT SENT \n");
     free(buffer);
@@ -82,11 +82,11 @@ void* handle_request(void * arg) {
 
 void send_message(uint8_t message_type) {
     uint16_t message_size = (uint16_t) (strlen(name) + 1);
-    if (write(client_socket, &message_type, TYPE_SIZE) != TYPE_SIZE)
+    if (write(clientSocket, &message_type, TYPE_SIZE) != TYPE_SIZE)
         raise_error(" Could not write message type");
-    if (write(client_socket, &message_size, LEN_SIZE) != LEN_SIZE)
+    if (write(clientSocket, &message_size, LEN_SIZE) != LEN_SIZE)
         raise_error(" Could not write message size");
-    if (write(client_socket, name, message_size) != message_size)
+    if (write(clientSocket, name, message_size) != message_size)
         raise_error(" Could not write name message");
 }
 
@@ -94,7 +94,7 @@ void connect_to_server() {
     send_message(REGISTER);
 
     uint8_t message_type;
-    if (read(client_socket, &message_type, 1) != 1) raise_error("\n Could not read response message type\n");
+    if (read(clientSocket, &message_type, 1) != 1) raise_error("\n Could not read response message type\n");
 
     switch (message_type) {
         case WRONGNAME:
@@ -109,29 +109,29 @@ void connect_to_server() {
     }
 }
 
-void handle_message() {
+void handleMessage() {
     uint8_t message_type;
     pthread_t thread;
     int x = 1;
     while (x) {
-        if (read(client_socket, &message_type, TYPE_SIZE) != TYPE_SIZE)
+        if (read(clientSocket, &message_type, TYPE_SIZE) != TYPE_SIZE)
             raise_error(" Could not read message type");
         switch (message_type) {
             case REQUEST:
-                //handle_request();
+                //handleTask();
                 printf(" ");
                 uint16_t req_len;
-                if (read(client_socket, &req_len, 2) <= 0) {
+                if (read(clientSocket, &req_len, 2) <= 0) {
                     raise_error("cannot read length");
                 }
 
-                request_t req;
+                Request req;
                 memset( req.text, '\0', sizeof(req.text));
-                if (read(client_socket, req.text, req_len) < 0) {
+                if (read(clientSocket, req.text, req_len) < 0) {
                     raise_error("cannot read whole text");
                 }
 
-                pthread_create(&thread, NULL, handle_request, &req);
+                pthread_create(&thread, NULL, handleTask, &req);
                 pthread_detach(thread);
                 break;
             case PING:
@@ -147,22 +147,22 @@ void handle_message() {
     }
 }
 
-void handle_signals(int signo) {
+void handleSignals(int signo) {
     send_message(UNREGISTER);
     //printf("KILLED BY SIGNAL \n");
     exit(1);
 }
 
-void init(char *connection_type, char *server_ip_path, char *port) {
+void initConnections(char *connection_type, char *server_ip_path, char *port) {
 
     struct sigaction act;
-    act.sa_handler = handle_signals;
+    act.sa_handler = handleSignals;
     sigemptyset(&act.sa_mask);
     act.sa_flags = 0;
     sigaction(SIGINT, &act, NULL);
 
-    if (strcmp("WEB", connection_type) == 0) {
-        inet_addr(server_ip_path);
+    if (strcmp("WEB", connectionType) == 0) {
+        inet_addr(serverIpPath);
         uint16_t port_num = (uint16_t) atoi(port);
         if (port_num < 1024 || port_num > 65535) {
             raise_error("wrong port");
@@ -172,24 +172,24 @@ void init(char *connection_type, char *server_ip_path, char *port) {
         web_address.sin_family = AF_INET;
         web_address.sin_addr.s_addr = htonl(INADDR_ANY); //inet_addr(server_ip_path);//inet_addr("192.168.0.66"); //htonl(ip);
         web_address.sin_port = htons(port_num);
-        if ((client_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        if ((clientSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             raise_error("socket");
         }
-        if (connect(client_socket, (const struct sockaddr *) &web_address, sizeof(web_address)) == -1) {
+        if (connect(clientSocket, (const struct sockaddr *) &web_address, sizeof(web_address)) == -1) {
             raise_error("connect");
         }
         printf("CONNECTED TO WEB \n");
 
-    } else if (strcmp("LOCAL", connection_type) == 0) {
-        char *unix_path = server_ip_path;
+    } else if (strcmp("LOCAL", connectionType) == 0) {
+        char *unix_path = serverIpPath;
         //todo -> check len of unix_path
         struct sockaddr_un local_address;
         local_address.sun_family = AF_UNIX;
         snprintf(local_address.sun_path, MAX_PATH, "%s", unix_path);
-        if ((client_socket = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+        if ((clientSocket = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
             raise_error("\n Could not create local socket\n");
 
-        if (connect(client_socket, (const struct sockaddr *) &local_address, sizeof(local_address)) == -1)
+        if (connect(clientSocket, (const struct sockaddr *) &local_address, sizeof(local_address)) == -1)
             raise_error("\n Could not connect to local socket\n");
 
     } else {
@@ -199,8 +199,8 @@ void init(char *connection_type, char *server_ip_path, char *port) {
 
 void clean() {
     send_message(UNREGISTER);
-    if (shutdown(client_socket, SHUT_RDWR) == -1)
+    if (shutdown(clientSocket, SHUT_RDWR) == -1)
         fprintf(stderr, "\n Could not shutdown Socket\n");
-    if (close(client_socket) == -1)
+    if (close(clientSocket) == -1)
         fprintf(stderr, "\n Could not close Socket\n");
 }

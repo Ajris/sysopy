@@ -15,7 +15,7 @@
 #define LEN_SIZE 2
 
 #define MAX_MSG_SIZE 10240
-typedef enum message_type {
+typedef enum MessageType {
     REGISTER = 0,
     UNREGISTER = 1,
     SUCCESS = 2,
@@ -25,12 +25,12 @@ typedef enum message_type {
     RESULT = 6,
     PING = 7,
     PONG = 8,
-} message_type;
+} MessageType;
 
-typedef enum connect_type {
+typedef enum ConnectionType {
     LOCAL,
     WEB
-} connect_type;
+} ConnectionType;
 
 typedef struct Client {
     int fd;
@@ -39,10 +39,10 @@ typedef struct Client {
     int reserved;
 } Client;
 
-typedef struct request_t{
+typedef struct Request{
     char text[MAX_MSG_SIZE];
     int ID;
-} request_t;
+} Request;
 
 
 void raise_error(char* message){
