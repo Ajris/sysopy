@@ -17,14 +17,21 @@ int clientSocket;
 int ID = 0;
 
 void initConnections(char *connectionType, char *serverIpPath, char *port);
+
 void handleMessage();
-void connect_to_server();
-void send_message(uint8_t message_type);
+
+void connectToServer();
+
+void sendMessage(uint8_t messageType);
+
 void clean();
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char *argv[]) {
+    if (argc != 4 && argc != 5) {
+        printError("Provide: name | connection type | socketName OR serverIP port");
+    }
 
     name = argv[1];
     char *connection_type = argv[2];
@@ -33,46 +40,38 @@ int main(int argc, char *argv[]) {
     if (argc == 5) {
         port = argv[4];
     }
-
     initConnections(connection_type, server_ip, port);
-    connect_to_server();
+    connectToServer();
     handleMessage();
     clean();
     return 0;
 }
 
-void* handleTask(void *arg) {
-
-    Request* req_tmp = (Request *)arg;
+void *handleTask(void *arg) {
+    Request *reqTmp = (Request *) arg;
     Request req;
-    memset(req.text,0, sizeof(req.text));
-    strcpy(req.text,req_tmp->text);
-    int id = req_tmp ->ID;
-
-
+    memset(req.text, 0, sizeof(req.text));
+    strcpy(req.text, reqTmp->text);
+    int id = reqTmp->ID;
     char *buffer = malloc(100 + 2 * strlen(req.text));
     char *buffer_res = malloc(100 + 2 * strlen(req.text));
     sprintf(buffer, "echo '%s' | awk '{for(x=1;$x;++x)print $x}' | sort | uniq -c", (char *) req.text);
     FILE *result = popen(buffer, "r");
     int n = fread(buffer, 1, 99 + 2 * strlen(req.text), result);
     buffer[n] = '\0';
-
     int words_count = 1;
     char *res = strtok(req.text, " ");
     while (strtok(NULL, " ") && res) {
         words_count++;
     }
-
-    sprintf(buffer_res, "ID: %d sum: %d || %s",id, words_count, buffer);
-    printf("RES: %s\n", buffer);
-    //sleep(4);
+    sprintf(buffer_res, "ID: %d sum: %d || %s", id, words_count, buffer);
     pthread_mutex_lock(&mutex);
-    send_message(RESULT);
+    sendMessage(RESULT);
     int len = strlen(buffer_res);
-    if (write(clientSocket,&len, sizeof(int)) != sizeof(int))
-        raise_error(" Could not write message type");
+    if (write(clientSocket, &len, sizeof(int)) != sizeof(int))
+        printError(" Could not write message type");
     if (write(clientSocket, buffer_res, len) != len)
-        raise_error(" Could not write message type");
+        printError(" Could not write message type");
     printf("RESULT SENT \n");
     free(buffer);
     free(buffer_res);
@@ -80,125 +79,111 @@ void* handleTask(void *arg) {
     return NULL;
 }
 
-void send_message(uint8_t message_type) {
-    uint16_t message_size = (uint16_t) (strlen(name) + 1);
-    if (write(clientSocket, &message_type, TYPE_SIZE) != TYPE_SIZE)
-        raise_error(" Could not write message type");
-    if (write(clientSocket, &message_size, LEN_SIZE) != LEN_SIZE)
-        raise_error(" Could not write message size");
-    if (write(clientSocket, name, message_size) != message_size)
-        raise_error(" Could not write name message");
+void sendMessage(uint8_t messageType) {
+    uint16_t messageSize = (uint16_t) (strlen(name) + 1);
+    if (write(clientSocket, &messageType, TYPE_SIZE) != TYPE_SIZE)
+        printError(" Could not write message type");
+    if (write(clientSocket, &messageSize, LEN_SIZE) != LEN_SIZE)
+        printError(" Could not write message size");
+    if (write(clientSocket, name, messageSize) != messageSize)
+        printError(" Could not write name message");
 }
 
-void connect_to_server() {
-    send_message(REGISTER);
-
-    uint8_t message_type;
-    if (read(clientSocket, &message_type, 1) != 1) raise_error("\n Could not read response message type\n");
-
-    switch (message_type) {
+void connectToServer() {
+    sendMessage(REGISTER);
+    uint8_t messageType;
+    if (read(clientSocket, &messageType, 1) != 1) printError("\n Could not read response message type\n");
+    switch (messageType) {
         case WRONGNAME:
-            raise_error("Name already in use\n");
+            printError("Name already in use\n");
         case FAILSIZE:
-            raise_error("Too many clients logged\n");
+            printError("Too many clients logged\n");
         case SUCCESS:
             printf("Logged\n");
             break;
         default:
-            raise_error("Impossible \n");
+            printError("Impossible \n");
     }
 }
 
 void handleMessage() {
-    uint8_t message_type;
+    uint8_t messageType;
     pthread_t thread;
-    int x = 1;
-    while (x) {
-        if (read(clientSocket, &message_type, TYPE_SIZE) != TYPE_SIZE)
-            raise_error(" Could not read message type");
-        switch (message_type) {
+    while (1) {
+        if (read(clientSocket, &messageType, TYPE_SIZE) != TYPE_SIZE)
+            printError(" Could not read message type");
+        switch (messageType) {
             case REQUEST:
-                //handleTask();
                 printf(" ");
                 uint16_t req_len;
                 if (read(clientSocket, &req_len, 2) <= 0) {
-                    raise_error("cannot read length");
+                    printError("cannot read length");
                 }
-
                 Request req;
-                memset( req.text, '\0', sizeof(req.text));
+                memset(req.text, '\0', sizeof(req.text));
                 if (read(clientSocket, req.text, req_len) < 0) {
-                    raise_error("cannot read whole text");
+                    printError("cannot read whole text");
                 }
-
                 pthread_create(&thread, NULL, handleTask, &req);
                 pthread_detach(thread);
                 break;
             case PING:
-                //printf("HALKO \n");
                 pthread_mutex_lock(&mutex);
-                send_message(PONG);
+                sendMessage(PONG);
                 pthread_mutex_unlock(&mutex);
                 break;
             default:
-                //printf("Unknown message type\n");
                 break;
         }
     }
 }
 
 void handleSignals(int signo) {
-    send_message(UNREGISTER);
-    //printf("KILLED BY SIGNAL \n");
+    sendMessage(UNREGISTER);
     exit(1);
 }
 
-void initConnections(char *connection_type, char *server_ip_path, char *port) {
-
+void initConnections(char *connectionType, char *serverIpPath, char *port) {
     struct sigaction act;
     act.sa_handler = handleSignals;
     sigemptyset(&act.sa_mask);
     act.sa_flags = 0;
     sigaction(SIGINT, &act, NULL);
-
     if (strcmp("WEB", connectionType) == 0) {
         inet_addr(serverIpPath);
         uint16_t port_num = (uint16_t) atoi(port);
         if (port_num < 1024 || port_num > 65535) {
-            raise_error("wrong port");
+            printError("wrong port");
         }
         struct sockaddr_in web_address;
         memset(&web_address, 0, sizeof(struct sockaddr_in));
         web_address.sin_family = AF_INET;
-        web_address.sin_addr.s_addr = htonl(INADDR_ANY); //inet_addr(server_ip_path);//inet_addr("192.168.0.66"); //htonl(ip);
+        web_address.sin_addr.s_addr = htonl(
+                INADDR_ANY); //inet_addr(serverIpPath);//inet_addr("192.168.0.66"); //htonl(ip);
         web_address.sin_port = htons(port_num);
         if ((clientSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-            raise_error("socket");
+            printError("socket");
         }
         if (connect(clientSocket, (const struct sockaddr *) &web_address, sizeof(web_address)) == -1) {
-            raise_error("connect");
+            printError("connect");
         }
         printf("CONNECTED TO WEB \n");
-
     } else if (strcmp("LOCAL", connectionType) == 0) {
         char *unix_path = serverIpPath;
-        //todo -> check len of unix_path
         struct sockaddr_un local_address;
         local_address.sun_family = AF_UNIX;
         snprintf(local_address.sun_path, MAX_PATH, "%s", unix_path);
         if ((clientSocket = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
-            raise_error("\n Could not create local socket\n");
-
+            printError("\n Could not create local socket\n");
         if (connect(clientSocket, (const struct sockaddr *) &local_address, sizeof(local_address)) == -1)
-            raise_error("\n Could not connect to local socket\n");
-
+            printError("\n Could not connect to local socket\n");
     } else {
-        raise_error("wrong type of argument");
+        printError("wrong type of argument");
     }
 }
 
 void clean() {
-    send_message(UNREGISTER);
+    sendMessage(UNREGISTER);
     if (shutdown(clientSocket, SHUT_RDWR) == -1)
         fprintf(stderr, "\n Could not shutdown Socket\n");
     if (close(clientSocket) == -1)

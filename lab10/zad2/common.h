@@ -1,20 +1,28 @@
-//
-// Created by przjab98 on 31.05.19.
-//
-
 #ifndef SOCKETS_COMMON_H
 #define SOCKETS_COMMON_H
 
 #include <stdint.h>
-#include <unistd.h>
 #include <errno.h>
-#define MAX_TEXT_SIZE 10240
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <pthread.h>
+#include <sys/un.h>
+#include <sys/epoll.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <signal.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <arpa/inet.h>
+
 #define MAX_PATH 108
 #define CLIENT_MAX 12
 #define TYPE_SIZE 1
 #define LEN_SIZE 2
-
 #define MAX_MSG_SIZE 10240
+
 typedef enum MessageType {
     REGISTER = 0,
     UNREGISTER = 1,
@@ -25,12 +33,26 @@ typedef enum MessageType {
     RESULT = 6,
     PING = 7,
     PONG = 8,
+    END = 9
 } MessageType;
 
 typedef enum ConnectionType {
-    LOCAL,
-    WEB
+    LOCAL = 0,
+    WEB = 1
 } ConnectionType;
+
+typedef struct Message {
+    enum MessageType messageType;
+    char name[64];
+    enum ConnectionType connectionType;
+    char value[10240];
+
+} Message;
+
+typedef struct Request{
+    char text[10240];
+    int ID;
+} Request;
 
 typedef struct Client {
     int fd;
@@ -39,15 +61,9 @@ typedef struct Client {
     int reserved;
 } Client;
 
-typedef struct Request{
-    char text[MAX_MSG_SIZE];
-    int ID;
-} Request;
-
-
-void raise_error(char* message){
-    fprintf(stderr, "%s :: %s \n", message, strerror(errno));
+void printError(char* message) {
+    printf("ERROR: %s\n", message);
     exit(1);
 }
 
-#endif //SOCKETS_COMMON_H
+#endif
