@@ -27,7 +27,7 @@ void addHandlers();
 
 int main(int argc, char *argv[]) {
     if (argc != 4 && argc != 5) {
-        printError("Wrong num of arguments");
+        printError("Provide: name | connection type | socketName OR serverIP port");
     }
     name = argv[1];
     char *connectionType = argv[2];

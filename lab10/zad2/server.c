@@ -52,15 +52,15 @@ size_t read_whole_file(const char *file_name, char *buffer) {
 
 int currentClient = 0;
 
-void handle_signal(int);
+void handleSignal(int);
 
 void init(char *, char *);
 
-void handle_message(int);
+void handleMessage(int);
 
 void register_client(char *, int);
 
-void unregister_client(char *);
+void unregisterClient(char *);
 
 void clean();
 
@@ -70,7 +70,7 @@ void *handle_terminal(void *);
 
 void handle_connection(int);
 
-void delete_client(int);
+void deleteClient(int);
 
 void delete_socket(int);
 
@@ -84,14 +84,14 @@ int in(void *const a, void *const pbase, size_t total_elems, size_t size, __comp
     return -1;
 }
 
-int cmp_name(char *name, Client *client) {
+int compareName(char *name, Client *client) {
     return strcmp(name, client->name);
 }
 
-int web_socket;
-int local_socket;
+int webSocket;
+int localSocket;
 int epoll;
-char *local_path;
+char *localPath;
 int id;
 
 pthread_t ping;
@@ -99,7 +99,7 @@ pthread_t command;
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 Client clients[CLIENT_MAX];
-int clients_amount = 0;
+int clientsAmount = 0;
 
 
 int main(int argc, char *argv[]) {
@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
         if (event.data.fd < 0)
             handle_connection(-event.data.fd);
         else
-            handle_message(event.data.fd);
+            handleMessage(event.data.fd);
     }
 
 
@@ -131,16 +131,16 @@ void *ping_routine(void *arg) {
     int x = 1;
     while (x) {
         pthread_mutex_lock(&mutex);
-        for (int i = 0; i < clients_amount; ++i) {
-            if (clients[i].active_counter != 0) {
-                printf("num: %d \n",clients[i].active_counter );
+        for (int i = 0; i < clientsAmount; ++i) {
+            if (clients[i].activeCounter != 0) {
+                printf("num: %d \n",clients[i].activeCounter );
                 printf("Client \"%s\" do not respond. Removing from registered clients\n", clients[i].name);
-                delete_client(i--);
+                deleteClient(i--);
             } else {
                 if (write(clients[i].fd, &message_type, 1) != 1)
                     raise_error(" Could not PING client");
 
-                clients[i].active_counter++;
+                clients[i].activeCounter++;
             }
         }
         pthread_mutex_unlock(&mutex);
@@ -192,7 +192,7 @@ void *handle_terminal(void *arg) {
         int i = 0;
         int min = 90000;
         int index = 0;
-        for (i = 0; i < clients_amount; i++) {
+        for (i = 0; i < clientsAmount; i++) {
             if (clients[i].reserved  < min) {
                 min = clients[i].reserved;
                 index = i;
@@ -200,7 +200,7 @@ void *handle_terminal(void *arg) {
         }
         i = index;
 
-        i = currentClient%clients_amount;
+        i = currentClient%clientsAmount;
         currentClient++;
 
         printf("Request sent to %s \n", clients[i].name);
@@ -225,7 +225,7 @@ void handle_connection(int socket) {
 
 }
 
-void handle_message(int socket) {
+void handleMessage(int socket) {
     uint8_t message_type;
     uint16_t message_size;
 
@@ -243,7 +243,7 @@ void handle_message(int socket) {
         case UNREGISTER: {
             if (read(socket, client_name, message_size) != message_size)
                 raise_error(" Could not read unregister message name\n");
-            unregister_client(client_name);
+            unregisterClient(client_name);
             break;
         }
         case RESULT: {
@@ -264,7 +264,7 @@ void handle_message(int socket) {
             for(i = 0; i < CLIENT_MAX; i++){
                 if(clients[i].reserved > 0 && strcmp(client_name, clients[i].name) == 0){
 //                    clients[i].reserved --;
-                    clients[i].active_counter = 0;
+                    clients[i].activeCounter = 0;
                     printf("Client %s is free now \n", client_name);
                 }
             }
@@ -275,8 +275,8 @@ void handle_message(int socket) {
             if (read(socket, client_name, message_size) != message_size)
                 raise_error(" Could not read PONG message\n");
             pthread_mutex_lock(&mutex);
-            int i = in(client_name, clients, (size_t) clients_amount, sizeof(Client), (__compar_fn_t) cmp_name);
-            if (i >= 0) clients[i].active_counter = clients[i].active_counter == 0 ? 0 : clients[i].active_counter-1;
+            int i = in(client_name, clients, (size_t) clientsAmount, sizeof(Client), (__compar_fn_t) compareName);
+            if (i >= 0) clients[i].activeCounter = clients[i].activeCounter == 0 ? 0 : clients[i].activeCounter-1;
             pthread_mutex_unlock(&mutex);
             break;
         }
@@ -290,24 +290,24 @@ void handle_message(int socket) {
 void register_client(char *client_name, int socket) {
     uint8_t message_type;
     pthread_mutex_lock(&mutex);
-    if (clients_amount == CLIENT_MAX) {
+    if (clientsAmount == CLIENT_MAX) {
         message_type = FAILSIZE;
         if (write(socket, &message_type, 1) != 1)
             raise_error(" Could not write FAILSIZE message to client \"%s\"\n");
         delete_socket(socket);
     } else {
-        int exists = in(client_name, clients, (size_t) clients_amount, sizeof(Client), (__compar_fn_t) cmp_name);
+        int exists = in(client_name, clients, (size_t) clientsAmount, sizeof(Client), (__compar_fn_t) compareName);
         if (exists != -1) {
             message_type = WRONGNAME;
             if (write(socket, &message_type, 1) != 1)
                 raise_error(" Could not write WRONGNAME message to client \"%s\"\n");
             delete_socket(socket);
         } else {
-            clients[clients_amount].fd = socket;
-            clients[clients_amount].name = malloc(strlen(client_name) + 1);
-            clients[clients_amount].active_counter = 0;
-            clients[clients_amount].reserved = 0;
-            strcpy(clients[clients_amount++].name, client_name);
+            clients[clientsAmount].fd = socket;
+            clients[clientsAmount].name = malloc(strlen(client_name) + 1);
+            clients[clientsAmount].activeCounter = 0;
+            clients[clientsAmount].reserved = 0;
+            strcpy(clients[clientsAmount++].name, client_name);
             message_type = SUCCESS;
             if (write(socket, &message_type, 1) != 1)
                 raise_error(" Could not write SUCCESS message to client \"%s\"\n");
@@ -316,21 +316,21 @@ void register_client(char *client_name, int socket) {
     pthread_mutex_unlock(&mutex);
 }
 
-void unregister_client(char *client_name) {
+void unregisterClient(char *client_name) {
     pthread_mutex_lock(&mutex);
-    int i = in(client_name, clients, (size_t) clients_amount, sizeof(Client), (__compar_fn_t) cmp_name);
+    int i = in(client_name, clients, (size_t) clientsAmount, sizeof(Client), (__compar_fn_t) compareName);
     if (i >= 0) {
-        delete_client(i);
+        deleteClient(i);
         printf("Client \"%s\" unregistered\n", client_name);
     }
     pthread_mutex_unlock(&mutex);
 }
 
-void delete_client(int i) {
+void deleteClient(int i) {
     delete_socket(clients[i].fd);
     free(clients[i].name);
-    clients_amount--;
-    for (int j = i; j < clients_amount; ++j)
+    clientsAmount--;
+    for (int j = i; j < clientsAmount; ++j)
         clients[j] = clients[j + 1];
 
 }
@@ -344,7 +344,7 @@ void delete_socket(int socket) {
     if (close(socket) == -1) raise_error(" Could not close client's socket\n");
 }
 
-void handle_signal(int signo) {
+void handleSignal(int signo) {
     printf("\nSIGINT\n");
     exit(1);
 }
@@ -352,7 +352,7 @@ void handle_signal(int signo) {
 void init(char *port, char *path) {
 
     struct sigaction act;
-    act.sa_handler = handle_signal;
+    act.sa_handler = handleSignal;
     sigemptyset(&act.sa_mask);
     act.sa_flags = 0;
     sigaction(SIGINT, &act, NULL);
@@ -363,7 +363,7 @@ void init(char *port, char *path) {
     }
 
     uint16_t port_num = (uint16_t) atoi(port);
-    local_path = path;
+    localPath = path;
 
     struct sockaddr_in web_address;
     memset(&web_address, 0, sizeof(struct sockaddr_in));
@@ -371,42 +371,42 @@ void init(char *port, char *path) {
     web_address.sin_addr.s_addr =htonl(INADDR_ANY); //inet_addr("path"); //inet_addr("192.168.0.66"); //htonl(INADDR_ANY);
     web_address.sin_port = htons(port_num);
 
-    if ((web_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    if ((webSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         raise_error(" Could not create web socket\n");
 
     int yes = 1;
-    if (setsockopt(web_socket,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(int)) == -1) {
+    if (setsockopt(webSocket,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(int)) == -1) {
         perror("setsockopt");
         exit(1);
     }
 
-    if (bind(web_socket, (const struct sockaddr *) &web_address, sizeof(web_address)))
+    if (bind(webSocket, (const struct sockaddr *) &web_address, sizeof(web_address)))
         raise_error(" Could not bind web socket\n");
 
-    if (listen(web_socket, 64) == -1)
+    if (listen(webSocket, 64) == -1)
         raise_error(" Could not listen to web socket\n");
 
     struct sockaddr_un local_address;
     local_address.sun_family = AF_UNIX;
 
-    sprintf(local_address.sun_path, "%s", local_path);
+    sprintf(local_address.sun_path, "%s", localPath);
 
-    if ((local_socket = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+    if ((localSocket = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
         raise_error(" Could not create local socket\n");
-    if (bind(local_socket, (const struct sockaddr *) &local_address, sizeof(local_address)))
+    if (bind(localSocket, (const struct sockaddr *) &local_address, sizeof(local_address)))
         raise_error(" Could not bind local socket\n");
-    if (listen(local_socket, 64) == -1)
+    if (listen(localSocket, 64) == -1)
         raise_error(" Could not listen to local socket\n");
 
     struct epoll_event event;
     event.events = EPOLLIN | EPOLLPRI;
     if ((epoll = epoll_create1(0)) == -1)
         raise_error(" Could not create epoll\n");
-    event.data.fd = -web_socket;
-    if (epoll_ctl(epoll, EPOLL_CTL_ADD, web_socket, &event) == -1)
+    event.data.fd = -webSocket;
+    if (epoll_ctl(epoll, EPOLL_CTL_ADD, webSocket, &event) == -1)
         raise_error(" Could not add Web Socket to epoll\n");
-    event.data.fd = -local_socket;
-    if (epoll_ctl(epoll, EPOLL_CTL_ADD, local_socket, &event) == -1)
+    event.data.fd = -localSocket;
+    if (epoll_ctl(epoll, EPOLL_CTL_ADD, localSocket, &event) == -1)
         raise_error(" Could not add Local Socket to epoll\n");
 
 
@@ -420,11 +420,11 @@ void clean() {
     printf("CLEANUP \n");
     pthread_cancel(ping);
     pthread_cancel(command);
-    if (close(web_socket) == -1)
+    if (close(webSocket) == -1)
         fprintf(stderr, " Could not close Web Socket\n");
-    if (close(local_socket) == -1)
+    if (close(localSocket) == -1)
         fprintf(stderr, " Could not close Local Socket\n");
-    if (unlink(local_path) == -1)
+    if (unlink(localPath) == -1)
         fprintf(stderr, " Could not unlink Unix Path\n");
     if (close(epoll) == -1)
         fprintf(stderr, " Could not close epoll\n");

@@ -53,7 +53,7 @@ typedef struct Request{
 
 typedef struct Client {
     char *name;
-    int active_counter;
+    int activeCounter;
     enum ConnectionType connectionType;
     struct sockaddr* sockaddr;
     int reserved;
